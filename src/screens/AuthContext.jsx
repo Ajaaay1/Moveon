@@ -12,8 +12,18 @@ const DEMO_DRIVER = {
   role: "driver",
 };
 
+const DEMO_PASSENGER = {
+  name: "Demo",
+  midName: "",
+  lastName: "Passenger",
+  contactInfo: "09171111111",
+  email: "passenger.demo@moveon.test",
+  password: "MoveOnPassenger123",
+  role: "passenger",
+};
+
 export const AuthProvider = ({ children }) => {
-  const [users, setUsers] = useState([DEMO_DRIVER]);
+  const [users, setUsers] = useState([DEMO_DRIVER, DEMO_PASSENGER]);
   const [activeBooking, setActiveBooking] = useState(null);
 
   const registerUser = (newUser) => {
