@@ -92,7 +92,7 @@ export default function HomeScreen() {
         style={styles.map}
         showsUserLocation={hasLocationPermission}
         showsMyLocationButton={hasLocationPermission}
-        initialRegion={initialRegion}
+        region={initialRegion}
       />
 
       <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
