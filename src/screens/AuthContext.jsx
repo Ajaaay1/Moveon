@@ -2,8 +2,6 @@ import React, { createContext, useState } from "react";
 
 export const AuthContext = createContext();
 
-// Demo account for DRIVER testing only.
-// Do not use this account or password for a real production system.
 const DEMO_DRIVER = {
   name: "Demo",
   midName: "",
@@ -15,9 +13,8 @@ const DEMO_DRIVER = {
 };
 
 export const AuthProvider = ({ children }) => {
-  // The demo driver is available whenever the app starts.
-  // Passenger accounts are still created through passenger registration.
   const [users, setUsers] = useState([DEMO_DRIVER]);
+  const [activeBooking, setActiveBooking] = useState(null);
 
   const registerUser = (newUser) => {
     const exists = users.some(
@@ -59,6 +56,23 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
+  const createBooking = (booking) => {
+    setActiveBooking({
+      ...booking,
+      status: "Waiting for driver",
+    });
+  };
+
+  const updateBookingStatus = (status) => {
+    if (activeBooking) {
+      setActiveBooking({ ...activeBooking, status });
+    }
+  };
+
+  const clearBooking = () => {
+    setActiveBooking(null);
+  };
+
   const resetPassword = (email, newPassword) => {
     const userIndex = users.findIndex(
       (u) => u.email.toLowerCase() === email.trim().toLowerCase()
@@ -83,7 +97,16 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ users, registerUser, loginUser, resetPassword }}
+      value={{
+        users,
+        registerUser,
+        loginUser,
+        resetPassword,
+        activeBooking,
+        createBooking,
+        updateBookingStatus,
+        clearBooking,
+      }}
     >
       {children}
     </AuthContext.Provider>
