@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import {
   Alert,
-  ScrollView,
+  Animated,
   StyleSheet,
   Switch,
   Text,
@@ -10,10 +10,11 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import MapView from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
 import Logo from "../components/logo";
-import BackgroundWrap from "../components/backgroundWrap";
-import DRIVER_RIDES from "../data/driverRides";
+import { AuthContext } from "./AuthContext";
 
 const STATUS_STEPS = [
   "Waiting for driver",
@@ -30,13 +31,58 @@ const DEMO_HISTORY = [
 
 export default function DriverHomeScreen() {
   const router = useRouter();
+  const {
+    activeBooking,
+    updateBookingStatus,
+    clearBooking,
+  } = useContext(AuthContext);
+
   const [isOnline, setIsOnline] = useState(false);
   const [autoAccept, setAutoAccept] = useState(false);
   const [targetEnabled, setTargetEnabled] = useState(false);
-  const [targetDestination, setTargetDestination] = useState("SM City Davao");
-  const [statusIndex, setStatusIndex] = useState(0);
+  const [targetDestination, setTargetDestination] = useState("SM City Cagayan de Oro");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [region, setRegion] = useState({
+    latitude: 8.4542,
+    longitude: 124.6319,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+  const slideAnim = useState(new Animated.Value(-300))[0];
 
-  const ride = DRIVER_RIDES[0];
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        setHasLocationPermission(true);
+        const location = await Location.getCurrentPositionAsync({});
+        setRegion({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      }
+    })();
+  }, []);
+
+  const toggleDrawer = () => {
+    if (isDrawerOpen) {
+      Animated.timing(slideAnim, {
+        toValue: -300,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => setIsDrawerOpen(false));
+    } else {
+      setIsDrawerOpen(true);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
@@ -49,203 +95,284 @@ export default function DriverHomeScreen() {
     ]);
   };
 
-  const handleRideStatus = () => {
-    if (statusIndex < STATUS_STEPS.length - 1) {
-      setStatusIndex(statusIndex + 1);
+  const handleBookingStatus = () => {
+    const currentIndex = STATUS_STEPS.indexOf(activeBooking.status);
+
+    if (currentIndex < STATUS_STEPS.length - 1) {
+      updateBookingStatus(STATUS_STEPS[currentIndex + 1]);
     } else {
-      Alert.alert("Ride Completed", "This is a demo ride. No real booking was made.");
+      Alert.alert("Ride Completed", "The demo booking has been completed.");
+      clearBooking();
     }
   };
 
   return (
-    <BackgroundWrap>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.topBar}>
-          <Logo size={54} />
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={25} color="#ef4444" />
-          </TouchableOpacity>
-        </View>
+    <View style={styles.container}>
+      <MapView
+        style={styles.map}
+        initialRegion={region}
+        showsUserLocation={hasLocationPermission}
+        showsMyLocationButton={hasLocationPermission}
+      />
 
-        <View style={styles.heading}>
-          <Text style={styles.title}>Driver Dashboard</Text>
-          <Text style={styles.subtitle}>Welcome, Demo Driver</Text>
-        </View>
+      <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
+        <Ionicons name="menu" size={24} color="#111827" />
+      </TouchableOpacity>
 
-        <View style={styles.onlineCard}>
-          <View>
-            <Text style={styles.cardTitle}>Driver Status</Text>
-            <Text style={styles.muted}>{isOnline ? "You are online" : "You are offline"}</Text>
+      {(isDrawerOpen || activeBooking) && (
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() => {
+            if (isDrawerOpen) toggleDrawer();
+          }}
+        />
+      )}
+
+      <Animated.View
+        style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}
+      >
+        <View style={styles.profileHeader}>
+          <View style={styles.avatar}>
+            <Logo size={55} />
           </View>
-          <Switch value={isOnline} onValueChange={setIsOnline} />
+          <Text style={styles.profileName}>Demo Driver</Text>
+          <Text style={styles.profileCaption}>Driver Account</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Live Map</Text>
-        <View style={styles.mapCard}>
-          <Ionicons name="map-outline" size={42} color="#38bdf8" />
-          <Text style={styles.mapTitle}>Demo Map</Text>
-          <Text style={styles.muted}>Cagayan de Oro City</Text>
-          <Text style={styles.mapNote}>Sample location only — GPS is not connected.</Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>Driver Settings</Text>
-        <View style={styles.settingCard}>
-          <View style={styles.settingRow}>
-            <View style={styles.settingText}>
-              <Text style={styles.cardTitle}>Auto-Accept Requests</Text>
-              <Text style={styles.muted}>Automatically accept demo requests.</Text>
+        <View style={styles.drawerContent}>
+          <View style={styles.drawerSection}>
+            <View style={styles.drawerRow}>
+              <View>
+                <Text style={styles.drawerTitle}>Driver Status</Text>
+                <Text style={styles.drawerSubtitle}>
+                  {isOnline ? "You are online" : "You are offline"}
+                </Text>
+              </View>
+              <Switch value={isOnline} onValueChange={setIsOnline} />
             </View>
-            <Switch value={autoAccept} onValueChange={setAutoAccept} />
           </View>
-          <View style={styles.settingDivider} />
-          <View style={styles.settingRow}>
-            <View style={styles.settingText}>
-              <Text style={styles.cardTitle}>Target Destination</Text>
-              <Text style={styles.muted}>Show requests going toward your target.</Text>
+
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerTitle}>Driver Settings</Text>
+            <View style={styles.drawerRow}>
+              <View style={styles.settingText}>
+                <Text style={styles.settingName}>Auto-Accept Requests</Text>
+                <Text style={styles.drawerSubtitle}>Accept new demo bookings automatically</Text>
+              </View>
+              <Switch value={autoAccept} onValueChange={setAutoAccept} />
             </View>
-            <Switch value={targetEnabled} onValueChange={setTargetEnabled} />
+            <View style={styles.drawerRow}>
+              <View style={styles.settingText}>
+                <Text style={styles.settingName}>Target Destination</Text>
+                <Text style={styles.drawerSubtitle}>Set your preferred direction</Text>
+              </View>
+              <Switch value={targetEnabled} onValueChange={setTargetEnabled} />
+            </View>
+            {targetEnabled && (
+              <TextInput
+                style={styles.input}
+                value={targetDestination}
+                onChangeText={setTargetDestination}
+                placeholder="Enter destination"
+                placeholderTextColor="#94a3b8"
+              />
+            )}
           </View>
-          {targetEnabled && (
-            <TextInput
-              style={styles.input}
-              value={targetDestination}
-              onChangeText={setTargetDestination}
-              placeholder="Enter target destination"
-              placeholderTextColor="#94a3b8"
-            />
-          )}
+
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerTitle}>Driver Wallet</Text>
+            <Text style={styles.walletAmount}>₱1,250.00</Text>
+            <Text style={styles.drawerSubtitle}>Demo balance only</Text>
+          </View>
+
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerTitle}>Recent Job History</Text>
+            {DEMO_HISTORY.map((item) => (
+              <View key={item.id} style={styles.historyRow}>
+                <View style={styles.settingText}>
+                  <Text style={styles.settingName}>{item.passenger}</Text>
+                  <Text style={styles.drawerSubtitle}>{item.route}</Text>
+                </View>
+                <Text style={styles.historyFare}>{item.fare}</Text>
+              </View>
+            ))}
+          </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Current Booking</Text>
-        <View style={styles.bookingCard}>
-          <View style={styles.bookingTop}>
-            <Text style={styles.cardTitle}>{ride.passenger}</Text>
-            <Text style={styles.fare}>{ride.fare}</Text>
-          </View>
-          <Text style={styles.muted}>Pickup: {ride.pickup}</Text>
-          <Text style={styles.muted}>Destination: {ride.destination}</Text>
-          <Text style={styles.muted}>Distance: {ride.distance}</Text>
-          <View style={styles.statusBox}>
-            <Text style={styles.statusLabel}>Current Status</Text>
-            <Text style={styles.statusValue}>{STATUS_STEPS[statusIndex]}</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={handleRideStatus}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.buttonText}>
-              {statusIndex === 0 ? "Accept Ride" : statusIndex === STATUS_STEPS.length - 1 ? "Finish Demo" : "Next Step"}
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
+      </Animated.View>
+
+      <View style={styles.bottomPanel}>
+        {activeBooking ? (
+          <>
+            <View style={styles.bookingHeader}>
+              <View>
+                <Text style={styles.panelTitle}>New Booking Request</Text>
+                <Text style={styles.panelSubtitle}>{activeBooking.passenger}</Text>
+              </View>
+              <Text style={styles.fare}>{activeBooking.fare}</Text>
+            </View>
+            <Text style={styles.bookingLine}>Pickup: {activeBooking.pickup}</Text>
+            <Text style={styles.bookingLine}>Destination: {activeBooking.destination}</Text>
+            <Text style={styles.bookingLine}>Distance: {activeBooking.distance}</Text>
+            <View style={styles.statusBox}>
+              <Text style={styles.statusText}>Status: {activeBooking.status}</Text>
+            </View>
+            <TouchableOpacity style={styles.bookButton} onPress={handleBookingStatus}>
+              <Text style={styles.bookButtonText}>
+                {activeBooking.status === "Waiting for driver"
+                  ? "Accept Booking"
+                  : activeBooking.status === "Drop Off / Complete"
+                  ? "Complete Ride"
+                  : "Next Step"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <Text style={styles.panelTitle}>You are ready to receive bookings</Text>
+            <Text style={styles.panelSubtitle}>
+              No booking requests yet. A request will appear here after a passenger taps Book Ride.
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.detailsButton}
-            onPress={() => router.push({ pathname: "/details", params: { id: String(ride.id) } })}
-          >
-            <Text style={styles.detailsText}>View Booking Details</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionTitle}>Driver Wallet</Text>
-        <View style={styles.walletCard}>
-          <Text style={styles.muted}>Demo Earnings</Text>
-          <Text style={styles.walletAmount}>₱1,250.00</Text>
-          <Text style={styles.walletNote}>Sample balance only. No real payment is connected.</Text>
-        </View>
-
-        <Text style={styles.sectionTitle}>Recent Job History</Text>
-        {DEMO_HISTORY.map((item) => (
-          <View key={item.id} style={styles.historyCard}>
-            <View style={styles.historyText}>
-              <Text style={styles.cardTitle}>{item.passenger}</Text>
-              <Text style={styles.muted}>{item.route}</Text>
+            <View style={styles.waitingRow}>
+              <Ionicons name="bicycle-outline" size={20} color="#64748b" />
+              <Text style={styles.waitingText}>Waiting for passenger booking...</Text>
             </View>
-            <Text style={styles.fare}>{item.fare}</Text>
-          </View>
-        ))}
-      </ScrollView>
-    </BackgroundWrap>
+          </>
+        )}
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 18,
-    paddingTop: 35,
-    paddingBottom: 35,
-    gap: 12,
+  container: { flex: 1, backgroundColor: "#e2e8f0" },
+  map: { ...StyleSheet.absoluteFillObject },
+  menuButton: {
+    position: "absolute",
+    top: 55,
+    left: 18,
+    backgroundColor: "#ffffff",
+    padding: 11,
+    borderRadius: 25,
+    elevation: 5,
+    zIndex: 10,
   },
-  topBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    zIndex: 15,
   },
-  logoutButton: { padding: 8 },
-  heading: { alignItems: "center", marginBottom: 5 },
-  title: { color: "#ffffff", fontSize: 24, fontWeight: "bold" },
-  subtitle: { color: "#cbd5e1", marginTop: 4 },
-  sectionTitle: { color: "#ffffff", fontSize: 17, fontWeight: "bold", marginTop: 8 },
-  onlineCard: {
-    backgroundColor: "rgba(30, 41, 59, 0.94)",
-    borderRadius: 12,
-    padding: 15,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  drawer: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 300,
+    backgroundColor: "#ffffff",
+    zIndex: 20,
+    elevation: 20,
+    borderTopRightRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: "hidden",
   },
-  settingCard: {
-    backgroundColor: "rgba(30, 41, 59, 0.94)",
-    borderRadius: 12,
-    padding: 15,
+  profileHeader: {
+    backgroundColor: "#e0f2fe",
+    paddingTop: 55,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  settingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10 },
-  settingText: { flex: 1 },
-  settingDivider: { height: 1, backgroundColor: "rgba(255,255,255,0.15)", marginVertical: 12 },
-  cardTitle: { color: "#ffffff", fontSize: 15, fontWeight: "bold" },
-  muted: { color: "#cbd5e1", fontSize: 12, marginTop: 4 },
-  mapCard: {
-    minHeight: 150,
-    backgroundColor: "rgba(30, 41, 59, 0.94)",
-    borderRadius: 12,
-    alignItems: "center",
+  avatar: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#ffffff",
     justifyContent: "center",
-    padding: 18,
+    alignItems: "center",
+    marginBottom: 12,
   },
-  mapTitle: { color: "#ffffff", fontSize: 18, fontWeight: "bold", marginTop: 8 },
-  mapNote: { color: "#94a3b8", fontSize: 11, marginTop: 8, textAlign: "center" },
+  profileName: { color: "#0f172a", fontSize: 18, fontWeight: "bold" },
+  profileCaption: { color: "#64748b", fontSize: 12, marginTop: 3 },
+  drawerContent: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
+  drawerSection: {
+    paddingVertical: 13,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+    gap: 10,
+  },
+  drawerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 7,
+  },
+  drawerTitle: { color: "#0f172a", fontSize: 15, fontWeight: "bold" },
+  drawerSubtitle: { color: "#64748b", fontSize: 11, marginTop: 3 },
+  settingText: { flex: 1 },
+  settingName: { color: "#1e293b", fontSize: 13, fontWeight: "600" },
   input: {
     borderWidth: 1,
-    borderColor: "#64748b",
+    borderColor: "#cbd5e1",
     borderRadius: 8,
-    color: "#ffffff",
-    padding: 10,
-    marginTop: 12,
+    color: "#0f172a",
+    padding: 9,
+    marginTop: 5,
   },
-  bookingCard: {
-    backgroundColor: "rgba(30, 41, 59, 0.94)",
-    borderRadius: 12,
-    padding: 15,
-    gap: 7,
+  walletAmount: { color: "#0284c7", fontSize: 24, fontWeight: "bold", marginTop: 5 },
+  historyRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 },
+  historyFare: { color: "#0284c7", fontWeight: "bold" },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 17,
+    paddingHorizontal: 22,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   },
-  bookingTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  fare: { color: "#38bdf8", fontSize: 16, fontWeight: "bold" },
-  statusBox: { backgroundColor: "rgba(56, 189, 248, 0.12)", borderRadius: 8, padding: 10, marginTop: 8 },
-  statusLabel: { color: "#94a3b8", fontSize: 11 },
-  statusValue: { color: "#38bdf8", fontWeight: "bold", marginTop: 4 },
-  primaryButton: { backgroundColor: "#0284c7", padding: 12, borderRadius: 8, marginTop: 8 },
-  buttonText: { color: "#ffffff", textAlign: "center", fontWeight: "bold" },
-  detailsButton: { padding: 8, alignItems: "center" },
-  detailsText: { color: "#38bdf8", fontWeight: "bold" },
-  walletCard: { backgroundColor: "rgba(30, 41, 59, 0.94)", borderRadius: 12, padding: 16 },
-  walletAmount: { color: "#ffffff", fontSize: 27, fontWeight: "bold", marginTop: 5 },
-  walletNote: { color: "#94a3b8", fontSize: 11, marginTop: 5 },
-  historyCard: {
-    backgroundColor: "rgba(30, 41, 59, 0.94)",
-    borderRadius: 10,
-    padding: 14,
+  logoutText: { color: "#ef4444", fontWeight: "bold", marginLeft: 12 },
+  bottomPanel: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    paddingHorizontal: 18,
+    paddingTop: 15,
+    paddingBottom: 28,
+    elevation: 10,
+  },
+  bookingHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 8,
   },
-  historyText: { flex: 1 },
+  panelTitle: { color: "#0f172a", fontSize: 15, fontWeight: "bold" },
+  panelSubtitle: { color: "#64748b", fontSize: 12, marginTop: 4 },
+  bookingLine: { color: "#334155", fontSize: 12, marginTop: 5 },
+  fare: { color: "#0284c7", fontSize: 17, fontWeight: "bold" },
+  statusBox: {
+    backgroundColor: "#e0f2fe",
+    borderRadius: 8,
+    padding: 9,
+    marginTop: 10,
+  },
+  statusText: { color: "#0369a1", fontSize: 12, fontWeight: "bold" },
+  bookButton: {
+    backgroundColor: "#0284c7",
+    padding: 13,
+    borderRadius: 25,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  bookButtonText: { color: "#ffffff", fontWeight: "bold" },
+  waitingRow: { flexDirection: "row", alignItems: "center", marginTop: 12, gap: 8 },
+  waitingText: { color: "#64748b", fontSize: 12 },
 });
