@@ -110,7 +110,7 @@ export default function DriverHomeScreen() {
     <View style={styles.container}>
       <MapView
         style={styles.map}
-        initialRegion={region}
+        region={region}
         showsUserLocation={hasLocationPermission}
         showsMyLocationButton={hasLocationPermission}
       />
@@ -119,7 +119,7 @@ export default function DriverHomeScreen() {
         <Ionicons name="menu" size={24} color="#111827" />
       </TouchableOpacity>
 
-      {(isDrawerOpen || activeBooking) && (
+      {isDrawerOpen && (
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
@@ -158,7 +158,7 @@ export default function DriverHomeScreen() {
             <View style={styles.drawerRow}>
               <View style={styles.settingText}>
                 <Text style={styles.settingName}>Auto-Accept Requests</Text>
-                <Text style={styles.drawerSubtitle}>Accept new demo bookings automatically</Text>
+                <Text style={styles.drawerSubtitle}>Demo preference only</Text>
               </View>
               <Switch value={autoAccept} onValueChange={setAutoAccept} />
             </View>
