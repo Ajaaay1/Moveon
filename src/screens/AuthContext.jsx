@@ -7,8 +7,8 @@ const DEMO_DRIVER = {
   midName: "",
   lastName: "Driver",
   contactInfo: "09170000000",
-  email: "driver.demo@moveon.test",
-  password: "MoveOnDriver123",
+  email: "12",
+  password: "12",
   role: "driver",
 };
 
@@ -17,8 +17,8 @@ const DEMO_PASSENGER = {
   midName: "",
   lastName: "Passenger",
   contactInfo: "09171111111",
-  email: "passenger.demo@moveon.test",
-  password: "MoveOnPassenger123",
+  email: "123",
+  password: "123",
   role: "passenger",
 };
 
