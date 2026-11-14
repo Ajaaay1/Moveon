@@ -1,75 +1,208 @@
-import React, { createContext, useState } from "react";
+import React, { createContext, useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 export const AuthContext = createContext();
 
-const DEMO_DRIVER = {
-  name: "Demo",
-  midName: "",
-  lastName: "Driver",
-  contactInfo: "09170000000",
-  email: "12",
-  password: "12",
-  role: "driver",
-};
-
-const DEMO_PASSENGER = {
-  name: "Demo",
-  midName: "",
-  lastName: "Passenger",
-  contactInfo: "09171111111",
-  email: "123",
-  password: "123",
-  role: "passenger",
-};
-
 export const AuthProvider = ({ children }) => {
-  const [users, setUsers] = useState([DEMO_DRIVER, DEMO_PASSENGER]);
+  const [session, setSession] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState(null);
 
-  const registerUser = (newUser) => {
-    const exists = users.some(
-      (u) =>
-        u.email.toLowerCase() === newUser.email.toLowerCase() ||
-        (newUser.contactInfo && u.contactInfo === newUser.contactInfo)
+  const loadProfile = async (user) => {
+    if (!user) {
+      setCurrentUser(null);
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (error) throw error;
+    const account = { ...data, email: user.email };
+    setCurrentUser(account);
+    return account;
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (error) console.warn("Session error:", error.message);
+      if (mounted) {
+        setSession(data?.session || null);
+        if (data?.session?.user) {
+          try {
+            await loadProfile(data.session.user);
+          } catch (profileError) {
+            console.warn("Profile load error:", profileError.message);
+          }
+        }
+        setAuthLoading(false);
+      }
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, nextSession) => {
+        if (!mounted) return;
+        setSession(nextSession);
+        if (!nextSession) setCurrentUser(null);
+        else {
+          // Defer the profile request until after the auth callback.
+          Promise.resolve().then(() => loadProfile(nextSession.user)).catch(
+            (error) => console.warn("Profile load error:", error.message)
+          );
+        }
+      }
     );
 
-    if (exists) {
+    return () => {
+      mounted = false;
+      listener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const registerUser = async (newUser) => {
+    const fullName = newUser.fullName ||
+      [newUser.name, newUser.midName, newUser.lastName].filter(Boolean).join(" ");
+
+    const metadata = {
+      full_name: fullName,
+      phone: newUser.contactInfo || null,
+      role: newUser.role,
+      license_id: newUser.licenseId || null,
+      plate_number: newUser.plateNumber || null,
+    };
+
+    const { data, error } = await supabase.auth.signUp({
+      email: newUser.email.trim().toLowerCase(),
+      password: newUser.password,
+      options: { data: metadata },
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    if (!data.session) {
       return {
         success: false,
-        message: "An account with this email or phone already exists!",
+        message: "Account created. Please confirm your email, then log in. For driver registration, disable email confirmation during initial testing so the license details can be uploaded immediately.",
       };
     }
 
-    setUsers((prevUsers) => [...prevUsers, newUser]);
+    if (newUser.role === "driver") {
+      let licenseImagePath = null;
+
+      if (newUser.licenseImageUri) {
+        const response = await fetch(newUser.licenseImageUri);
+        const fileBlob = await response.blob();
+        const extension = newUser.licenseImageUri.split(".").pop()?.split("?")[0] || "jpg";
+        const filePath = `${data.user.id}/license-${Date.now()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("driver-licenses")
+          .upload(filePath, fileBlob, {
+            contentType: fileBlob.type || "image/jpeg",
+            upsert: false,
+          });
+
+        if (uploadError) return { success: false, message: uploadError.message };
+        licenseImagePath = filePath;
+      }
+
+      const { error: driverError } = await supabase
+        .from("driver_profiles")
+        .insert({
+          user_id: data.user.id,
+          license_id: newUser.licenseId || null,
+          license_image_path: licenseImagePath,
+          plate_number: newUser.plateNumber.trim().toUpperCase(),
+          verification_status: "pending",
+        });
+
+      if (driverError) return { success: false, message: driverError.message };
+    }
+
+    await loadProfile(data.user);
+    return { success: true, user: data.user };
+  };
+
+  const loginUser = async (identifier, password, role) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: identifier.trim().toLowerCase(),
+      password,
+    });
+
+    if (error) return { success: false, message: error.message };
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+
+    if (profileError) {
+      await supabase.auth.signOut();
+      return { success: false, message: profileError.message };
+    }
+
+    if (profile.role !== role) {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        message: role === "driver"
+          ? "This account is not registered as a driver."
+          : "This account is not registered as a passenger.",
+      };
+    }
+
+    if (role === "driver") {
+      const { data: driver, error: driverError } = await supabase
+        .from("driver_profiles")
+        .select("verification_status")
+        .eq("user_id", data.user.id)
+        .single();
+
+      if (driverError) {
+        await supabase.auth.signOut();
+        return { success: false, message: "Driver profile was not found." };
+      }
+
+      if (driver.verification_status !== "approved") {
+        await supabase.auth.signOut();
+        return {
+          success: false,
+          message: driver.verification_status === "rejected"
+            ? "Your driver application was rejected. Please contact Moveon support."
+            : "Your driver account is pending verification. You cannot access driver features yet.",
+        };
+      }
+    }
+
+    const user = { ...profile, email: data.user.email };
+    setCurrentUser(user);
+    return { success: true, user };
+  };
+
+  const logoutUser = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) return { success: false, message: error.message };
+    setCurrentUser(null);
     return { success: true };
   };
 
-  const loginUser = (identifier, password, role) => {
-    const normalizedIdentifier = identifier.trim().toLowerCase();
-
-    const foundUser = users.find(
-      (u) =>
-        (u.email.toLowerCase() === normalizedIdentifier ||
-          u.contactInfo === identifier.trim()) &&
-        u.password === password &&
-        u.role === role
-    );
-
-    if (foundUser) {
-      return { success: true, user: foundUser };
-    }
-
-    return {
-      success: false,
-      message:
-        "Access Denied: No registered account found with these credentials. Please register first.",
-    };
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+    return error
+      ? { success: false, message: error.message }
+      : { success: true, message: "Password reset email sent." };
   };
 
-  // UPDATED: Standardizes pickupCoords, destinationCoords, and fallback defaults
   const createBooking = (booking) => {
     setActiveBooking({
-      passenger: booking.passenger || "Aj Sarsonas",
+      passenger: booking.passenger || currentUser?.full_name || "Passenger",
       pickup: booking.pickup || "Current Location",
       destination: booking.destinationText || booking.destination || "Selected Destination",
       pickupCoords: booking.pickupCoords || null,
@@ -81,50 +214,25 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateBookingStatus = (status) => {
-    if (activeBooking) {
-      setActiveBooking({ ...activeBooking, status });
-    }
+    if (activeBooking) setActiveBooking({ ...activeBooking, status });
   };
 
-  const clearBooking = () => {
-    setActiveBooking(null);
-  };
-
-  const resetPassword = (email, newPassword) => {
-    const userIndex = users.findIndex(
-      (u) => u.email.toLowerCase() === email.trim().toLowerCase()
-    );
-
-    if (userIndex === -1) {
-      return {
-        success: false,
-        message: "No registered account found with this email address.",
-      };
-    }
-
-    const updatedUsers = [...users];
-    updatedUsers[userIndex] = {
-      ...updatedUsers[userIndex],
-      password: newPassword,
-    };
-    setUsers(updatedUsers);
-
-    return { success: true, message: "Password updated successfully!" };
-  };
+  const clearBooking = () => setActiveBooking(null);
 
   return (
-    <AuthContext.Provider
-      value={{
-        users,
-        registerUser,
-        loginUser,
-        resetPassword,
-        activeBooking,
-        createBooking,
-        updateBookingStatus,
-        clearBooking,
-      }}
-    >
+    <AuthContext.Provider value={{
+      session,
+      currentUser,
+      authLoading,
+      registerUser,
+      loginUser,
+      logoutUser,
+      resetPassword,
+      activeBooking,
+      createBooking,
+      updateBookingStatus,
+      clearBooking,
+    }}>
       {children}
     </AuthContext.Provider>
   );
