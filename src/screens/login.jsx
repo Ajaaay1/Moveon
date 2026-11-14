@@ -12,14 +12,14 @@ export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!email.trim() || !password) {
       Alert.alert("Missing Field", "Please fill in all fields.");
       return;
     }
 
     // 3. Authenticate against registered users context with role "passenger"
-    const result = loginUser(email, password, "passenger");
+    const result = await loginUser(email, password, "passenger");
 
     // 4. Block access if user is not registered or credentials fail
     if (!result || !result.success) {
