@@ -29,7 +29,7 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Form submission handler
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert("Missing Field", "Please enter your full name.");
       return;
@@ -51,8 +51,9 @@ export default function RegisterScreen() {
     }
 
     // Register passenger user using the explicit email field
-    const result = registerUser({
+    const result = await registerUser({
       name,
+      fullName: name,
       email: email.trim().toLowerCase(), // <--- Uses what user actually typed
       password,
       role: "passenger",
