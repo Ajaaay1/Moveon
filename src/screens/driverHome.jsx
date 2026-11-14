@@ -26,7 +26,7 @@ const DEMO_HISTORY = [
 
 export default function DriverHomeScreen() {
   const router = useRouter();
-  const { activeBooking, updateBookingStatus, clearBooking } = useContext(AuthContext);
+  const { currentUser, activeBooking, updateBookingStatus, clearBooking, logoutUser } = useContext(AuthContext);
 
   const [isOnline, setIsOnline] = useState(false);
   const [autoAccept, setAutoAccept] = useState(false);
@@ -104,7 +104,14 @@ export default function DriverHomeScreen() {
       {
         text: "Log Out",
         style: "destructive",
-        onPress: () => router.replace("/driver/login"),
+        onPress: async () => {
+          const result = await logoutUser();
+          if (!result.success) {
+            Alert.alert("Logout Failed", result.message || "Please try again.");
+            return;
+          }
+          router.replace("/driver/login");
+        },
       },
     ]);
   };
@@ -166,7 +173,7 @@ export default function DriverHomeScreen() {
           <View style={styles.avatar}>
             <Logo size={55} />
           </View>
-          <Text style={styles.profileName}>Demo Driver</Text>
+          <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
           <Text style={styles.profileCaption}>Driver Account</Text>
         </View>
 
