@@ -65,7 +65,11 @@ begin
     coalesce(new.raw_user_meta_data ->> 'full_name', 'New User'),
     new.raw_user_meta_data ->> 'phone',
     user_role
-  );
+  )
+  on conflict (id) do update set
+    full_name = excluded.full_name,
+    phone = excluded.phone,
+    role = excluded.role;
 
   return new;
 end;
