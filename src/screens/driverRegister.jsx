@@ -57,7 +57,7 @@ export default function DriverRegisterScreen() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim() || !lastName.trim()) {
       Alert.alert("Missing Field", "Please enter your First Name and Last Name.");
       return;
@@ -96,7 +96,7 @@ export default function DriverRegisterScreen() {
       return;
     }
 
-    const result = registerUser({
+    const result = await registerUser({
       name,
       midName,
       lastName,
