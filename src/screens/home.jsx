@@ -22,7 +22,7 @@ export default function HomeScreen() {
   const router = useRouter();
   
   // Connect AuthContext
-  const { activeBooking, createBooking, clearBooking } = useContext(AuthContext);
+  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser } = useContext(AuthContext);
   
   // Location States
   const [initialRegion, setInitialRegion] = useState(null);
@@ -137,7 +137,12 @@ export default function HomeScreen() {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const result = await logoutUser();
+    if (!result.success) {
+      Alert.alert("Logout Failed", result.message || "Please try again.");
+      return;
+    }
     router.replace("/login");
   };
 
@@ -177,7 +182,7 @@ export default function HomeScreen() {
 
     // Pushes full booking context to AuthContext so DriverHomeScreen can pick it up
     createBooking({
-      passenger: "Aj Sarsonas",
+      passenger: currentUser?.full_name || "Passenger",
       service: selectedService || "Motorcycle",
       pickupCoords: currentLocation,
       destinationCoords: destination,
@@ -284,7 +289,7 @@ export default function HomeScreen() {
             <Logo size={55} />
           </View>
           <TouchableOpacity style={styles.profileNameRow} activeOpacity={0.7}>
-            <Text style={styles.profileName}>Aj Sarsonas</Text>
+            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
             <Ionicons name="chevron-forward" size={18} color="#0f172a" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
