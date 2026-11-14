@@ -66,9 +66,16 @@ export const AuthProvider = ({ children }) => {
     };
   };
 
+  // UPDATED: Standardizes pickupCoords, destinationCoords, and fallback defaults
   const createBooking = (booking) => {
     setActiveBooking({
-      ...booking,
+      passenger: booking.passenger || "Aj Sarsonas",
+      pickup: booking.pickup || "Current Location",
+      destination: booking.destinationText || booking.destination || "Selected Destination",
+      pickupCoords: booking.pickupCoords || null,
+      destinationCoords: booking.destinationCoords || null,
+      fare: booking.fare || "₱120.00",
+      distance: booking.distance || "3.5 km",
       status: "Waiting for driver",
     });
   };
