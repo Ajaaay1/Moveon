@@ -53,6 +53,7 @@ export default function DriverRegisterScreen() {
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setLicenseImage(result.assets[0].uri);
+      setLicenseId("");
     }
   };
 
@@ -215,7 +216,10 @@ export default function DriverRegisterScreen() {
               placeholder="Enter License ID"
               placeholderTextColor="#ccc"
               autoCapitalize="characters"
-              onChangeText={setLicenseId}
+              onChangeText={(value) => {
+                setLicenseId(value);
+                if (value.trim()) setLicenseImage(null);
+              }}
               value={licenseId}
             />
 
