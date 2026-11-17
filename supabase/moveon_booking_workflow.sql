@@ -111,11 +111,6 @@ create index if not exists bookings_driver_status_created_idx
   on public.bookings (driver_id, status, created_at desc);
 create index if not exists bookings_status_created_idx
   on public.bookings (status, created_at desc);
-create index if not exists rider_ratings_driver_idx
-  on public.rider_ratings (driver_id);
-create index if not exists rider_ratings_passenger_idx
-  on public.rider_ratings (passenger_id);
-
 create table if not exists public.rider_ratings (
   id uuid primary key default gen_random_uuid(),
   booking_id uuid not null unique references public.bookings(id) on delete cascade,
@@ -124,6 +119,11 @@ create table if not exists public.rider_ratings (
   rating integer not null check (rating between 1 and 5),
   created_at timestamptz not null default now()
 );
+
+create index if not exists rider_ratings_driver_idx
+  on public.rider_ratings (driver_id);
+create index if not exists rider_ratings_passenger_idx
+  on public.rider_ratings (passenger_id);
 
 alter table public.rider_ratings enable row level security;
 grant select, insert on public.rider_ratings to authenticated;
