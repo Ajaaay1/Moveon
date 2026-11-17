@@ -3,6 +3,51 @@ import { supabase } from "../lib/supabase";
 
 export const AuthContext = createContext();
 
+const mapBooking = (row) => ({
+  ...row,
+  passenger: row.passenger_name,
+  pickupCoords: row.pickup_coords,
+  destinationCoords: row.destination_coords,
+  destination: row.destination,
+  status: ({
+    searching: "Waiting for driver",
+    accepted: "Proceed to Pick Up",
+    arrived: "Arrived at Pick Up",
+    in_progress: "Passenger Picked Up",
+    completed: "Drop Off / Complete",
+    cancelled: "Cancelled",
+  })[row.status] || row.status,
+});
+
+const getDriverDetails = async (driverId) => {
+  if (!driverId) return null;
+
+  const [profileResult, vehicleResult, ratingsResult] = await Promise.all([
+    supabase.from("profiles").select("id, full_name, phone").eq("id", driverId).maybeSingle(),
+    supabase.from("driver_profiles").select("vehicle_type, plate_number").eq("user_id", driverId).maybeSingle(),
+    supabase.from("rider_ratings").select("rating").eq("driver_id", driverId),
+  ]);
+
+  if (profileResult.error) throw profileResult.error;
+  if (vehicleResult.error) throw vehicleResult.error;
+  if (ratingsResult.error) throw ratingsResult.error;
+
+  const ratings = (ratingsResult.data || []).map((item) => Number(item.rating)).filter((value) => value >= 1 && value <= 5);
+  const averageRating = ratings.length
+    ? ratings.reduce((total, value) => total + value, 0) / ratings.length
+    : null;
+
+  return {
+    id: driverId,
+    name: profileResult.data?.full_name || "Driver",
+    phone: profileResult.data?.phone || "",
+    vehicleType: vehicleResult.data?.vehicle_type || "Vehicle not specified",
+    plateNumber: vehicleResult.data?.plate_number || "Plate not provided",
+    averageRating,
+    ratingCount: ratings.length,
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [session, setSession] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -69,8 +114,11 @@ export const AuthProvider = ({ children }) => {
       (_event, nextSession) => {
         if (!mounted) return;
         setSession(nextSession);
-        if (!nextSession) setCurrentUser(null);
-        else {
+        if (!nextSession) {
+          setCurrentUser(null);
+          setActiveBooking(null);
+          setIncomingBookings([]);
+        } else {
           Promise.resolve()
             .then(() => loadProfile(nextSession.user))
             .catch((error) => console.warn("Profile load error:", error.message));
@@ -100,7 +148,7 @@ export const AuthProvider = ({ children }) => {
           .from("bookings")
           .select("*")
           .eq("passenger_id", userId)
-          .in("status", ["searching", "accepted", "arrived", "in_progress"])
+          .in("status", ["searching", "accepted", "arrived", "in_progress", "completed"])
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -109,13 +157,47 @@ export const AuthProvider = ({ children }) => {
           console.warn("Passenger booking load error:", error.message);
           return;
         }
-        if (alive) setActiveBooking(data ? mapBooking(data) : null);
+
+        if (!data) {
+          if (alive) setActiveBooking(null);
+          return;
+        }
+
+        let driverDetails = null;
+        let existingRating = null;
+        if (data.driver_id) {
+          try {
+            driverDetails = await getDriverDetails(data.driver_id);
+          } catch (driverError) {
+            console.warn("Driver details load error:", driverError.message);
+          }
+        }
+
+        if (data.status === "completed") {
+          const { data: ratingRow, error: ratingError } = await supabase
+            .from("rider_ratings")
+            .select("rating")
+            .eq("booking_id", data.id)
+            .maybeSingle();
+
+          if (ratingError) console.warn("Ride rating lookup error:", ratingError.message);
+          existingRating = ratingRow?.rating ?? null;
+        }
+
+        if (alive) {
+          setActiveBooking({
+            ...mapBooking(data),
+            driverDetails,
+            passengerRating: existingRating,
+          });
+        }
       } else if (currentUser.role === "driver") {
         const { data: waiting, error: waitingError } = await supabase
           .from("bookings")
           .select("*")
           .eq("status", "searching")
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .limit(10);
 
         if (waitingError) {
           console.warn("Incoming bookings load error:", waitingError.message);
@@ -179,7 +261,6 @@ export const AuthProvider = ({ children }) => {
 
     if (error) return { success: false, message: error.message };
 
-    // Prototype signup expects Confirm email to be disabled in Supabase Auth.
     if (!data.user || !data.session) {
       return {
         success: false,
@@ -188,34 +269,14 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (newUser.role === "driver") {
-      let licenseImagePath = null;
-
-      if (newUser.licenseImageUri) {
-        const response = await fetch(newUser.licenseImageUri);
-        const fileBlob = await response.blob();
-        const extension = newUser.licenseImageUri.split(".").pop()?.split("?")[0] || "jpg";
-        const filePath = `${data.user.id}/license-${Date.now()}.${extension}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("driver-licenses")
-          .upload(filePath, fileBlob, {
-            contentType: fileBlob.type || "image/jpeg",
-            upsert: false,
-          });
-
-        if (uploadError) {
-          return { success: false, message: "Account created, but license photo upload failed: " + uploadError.message };
-        }
-        licenseImagePath = filePath;
-      }
-
       const { error: driverError } = await supabase
         .from("driver_profiles")
         .insert({
           user_id: data.user.id,
           license_id: newUser.licenseId || null,
-          license_image_path: licenseImagePath,
+          license_image_path: null,
           plate_number: newUser.plateNumber.trim().toUpperCase(),
+          vehicle_type: newUser.vehicleType.trim(),
           verification_status: "pending",
         });
 
@@ -256,7 +317,6 @@ export const AuthProvider = ({ children }) => {
         };
       }
 
-      // Driver verification is not enforced while Moveon is a presentation prototype.
       return { success: true, user: profile };
     } catch (profileError) {
       await supabase.auth.signOut();
@@ -277,22 +337,6 @@ export const AuthProvider = ({ children }) => {
       ? { success: false, message: error.message }
       : { success: true, message: "Password reset email sent." };
   };
-
-  const mapBooking = (row) => ({
-    ...row,
-    passenger: row.passenger_name,
-    pickupCoords: row.pickup_coords,
-    destinationCoords: row.destination_coords,
-    destination: row.destination,
-    status: ({
-      searching: "Waiting for driver",
-      accepted: "Proceed to Pick Up",
-      arrived: "Arrived at Pick Up",
-      in_progress: "Start Ride",
-      completed: "Drop Off / Complete",
-      cancelled: "Cancelled",
-    })[row.status] || row.status,
-  });
 
   const createBooking = async (booking) => {
     if (!session?.user?.id) return { success: false, message: "Please log in again." };
@@ -315,7 +359,7 @@ export const AuthProvider = ({ children }) => {
       .single();
 
     if (error) return { success: false, message: error.message };
-    setActiveBooking(mapBooking(data));
+    setActiveBooking({ ...mapBooking(data), driverDetails: null, passengerRating: null });
     return { success: true, booking: mapBooking(data) };
   };
 
@@ -338,25 +382,31 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateBookingStatus = async (status) => {
-    if (!activeBooking?.id || !session?.user?.id) return { success: false };
+    if (!activeBooking?.id || !session?.user?.id) {
+      return { success: false, message: "No active ride was found." };
+    }
+
     const dbStatus = ({
       "Proceed to Pick Up": "accepted",
       "Arrived at Pick Up": "arrived",
-      "Start Ride": "in_progress",
+      "Passenger Picked Up": "in_progress",
       "Drop Off / Complete": "completed",
       "completed": "completed",
-      "cancelled": "cancelled",
     })[status] || status;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("bookings")
       .update({ status: dbStatus, updated_at: new Date().toISOString() })
       .eq("id", activeBooking.id)
-      .eq("driver_id", session.user.id);
+      .eq("driver_id", session.user.id)
+      .select("*")
+      .single();
 
     if (error) return { success: false, message: error.message };
+
     if (dbStatus === "completed") setActiveBooking(null);
-    else setActiveBooking((old) => old ? { ...old, status } : old);
+    else setActiveBooking(mapBooking(data));
+
     return { success: true };
   };
 
@@ -365,6 +415,12 @@ export const AuthProvider = ({ children }) => {
       setActiveBooking(null);
       return { success: true };
     }
+
+    if (activeBooking.status !== "Waiting for driver") {
+      setActiveBooking(null);
+      return { success: true };
+    }
+
     const { error } = await supabase
       .from("bookings")
       .update({ status: "cancelled", updated_at: new Date().toISOString() })
@@ -374,6 +430,43 @@ export const AuthProvider = ({ children }) => {
 
     if (error) return { success: false, message: error.message };
     setActiveBooking(null);
+    return { success: true };
+  };
+
+  const submitRiderRating = async (bookingId, rating) => {
+    if (!session?.user?.id || !activeBooking?.driver_id) {
+      return { success: false, message: "The completed ride details are missing." };
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from("rider_ratings")
+      .select("rating")
+      .eq("booking_id", bookingId)
+      .maybeSingle();
+
+    if (existingError) return { success: false, message: existingError.message };
+
+    if (!existing) {
+      const { error } = await supabase
+        .from("rider_ratings")
+        .insert({
+          booking_id: bookingId,
+          passenger_id: session.user.id,
+          driver_id: activeBooking.driver_id,
+          rating,
+        });
+
+      if (error) return { success: false, message: error.message };
+    }
+
+    try {
+      const driverDetails = await getDriverDetails(activeBooking.driver_id);
+      setActiveBooking((old) => old ? { ...old, driverDetails, passengerRating: rating } : old);
+    } catch (error) {
+      console.warn("Updated rider rating load error:", error.message);
+      setActiveBooking((old) => old ? { ...old, passengerRating: rating } : old);
+    }
+
     return { success: true };
   };
 
@@ -392,6 +485,7 @@ export const AuthProvider = ({ children }) => {
       acceptBooking,
       updateBookingStatus,
       clearBooking,
+      submitRiderRating,
     }}>
       {children}
     </AuthContext.Provider>
