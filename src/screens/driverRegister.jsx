@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,15 +10,16 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import Logo from "../components/logo";
 import BackgroundWrap from "../components/backgroundWrap";
-import { AuthContext } from "../screens/AuthContext"; // 1. Import AuthContext
+import { AuthContext } from "../screens/AuthContext";
 
 export default function DriverRegisterScreen() {
   const router = useRouter();
-  const { registerUser } = useContext(AuthContext); // 2. Extract registerUser function
+  const { registerUser } = useContext(AuthContext);
 
   const [name, setName] = useState("");
   const [midName, setMidName] = useState("");
@@ -28,13 +30,36 @@ export default function DriverRegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [licenseId, setLicenseId] = useState("");
+  const [licenseImage, setLicenseImage] = useState(null);
+  const [plateNumber, setPlateNumber] = useState("");
 
-  const handleSave = () => {
-    if (!name.trim() || !lastName.trim()) {
+  const chooseLicensePhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
       Alert.alert(
-        "Missing Field",
-        "Please enter your First Name and Last Name."
+        "Permission Required",
+        "Please allow photo library access to attach your driver's license."
       );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setLicenseImage(result.assets[0].uri);
+      setLicenseId("");
+    }
+  };
+
+  const handleSave = async () => {
+    if (!name.trim() || !lastName.trim()) {
+      Alert.alert("Missing Field", "Please enter your First Name and Last Name.");
       return;
     }
 
@@ -48,6 +73,19 @@ export default function DriverRegisterScreen() {
       return;
     }
 
+    if (!licenseImage && !licenseId.trim()) {
+      Alert.alert(
+        "Driver's License Required",
+        "Please upload a license photo or enter your License ID."
+      );
+      return;
+    }
+
+    if (!plateNumber.trim()) {
+      Alert.alert("Missing Field", "Please enter your vehicle plate number.");
+      return;
+    }
+
     if (!password) {
       Alert.alert("Missing Field", "Please enter a password.");
       return;
@@ -58,8 +96,7 @@ export default function DriverRegisterScreen() {
       return;
     }
 
-    // 3. Register user in context state
-    const result = registerUser({
+    const result = await registerUser({
       name,
       midName,
       lastName,
@@ -67,6 +104,9 @@ export default function DriverRegisterScreen() {
       email,
       password,
       role: "driver",
+      licenseId: licenseId.trim(),
+      licenseImageUri: licenseImage,
+      plateNumber: plateNumber.trim().toUpperCase(),
     });
 
     if (!result.success) {
@@ -74,7 +114,6 @@ export default function DriverRegisterScreen() {
       return;
     }
 
-    // 4. Success alert & redirect to login
     Alert.alert(
       "Driver Account Created!",
       `Welcome Driver ${name} ${lastName}! Your registration application has been submitted successfully.`,
@@ -97,9 +136,7 @@ export default function DriverRegisterScreen() {
           <View style={styles.form}>
             <Logo />
             <Text style={styles.headerTitle}>Driver Registration</Text>
-            <Text style={styles.headerSubtitle}>
-              Create an account as Driver
-            </Text>
+            <Text style={styles.headerSubtitle}>Create an account as Driver</Text>
 
             <Text style={styles.label}>First Name</Text>
             <TextInput
@@ -149,6 +186,53 @@ export default function DriverRegisterScreen() {
               value={email}
             />
 
+            <Text style={styles.label}>Driver's License</Text>
+            <Text style={styles.helperText}>
+              Upload a license photo or enter your License ID. Only one is required.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.uploadBtn}
+              onPress={chooseLicensePhoto}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.uploadBtnText}>
+                {licenseImage ? "Change License Photo" : "Attach License Photo"}
+              </Text>
+            </TouchableOpacity>
+
+            {licenseImage ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: licenseImage }} style={styles.imagePreview} />
+                <TouchableOpacity onPress={() => setLicenseImage(null)}>
+                  <Text style={styles.removePhotoText}>Remove Photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            <Text style={styles.orText}>Or enter License ID</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter License ID"
+              placeholderTextColor="#ccc"
+              autoCapitalize="characters"
+              onChangeText={(value) => {
+                setLicenseId(value);
+                if (value.trim()) setLicenseImage(null);
+              }}
+              value={licenseId}
+            />
+
+            <Text style={styles.label}>Vehicle Plate Number</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="ABC 1234"
+              placeholderTextColor="#ccc"
+              autoCapitalize="characters"
+              onChangeText={(value) => setPlateNumber(value.toUpperCase())}
+              value={plateNumber}
+            />
+
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordContainer}>
               <TextInput
@@ -159,7 +243,6 @@ export default function DriverRegisterScreen() {
                 value={password}
                 secureTextEntry={!showPassword}
               />
-
               <Pressable
                 style={styles.eyeButton}
                 onPress={() => setShowPassword(!showPassword)}
@@ -183,7 +266,6 @@ export default function DriverRegisterScreen() {
                 value={confirmPassword}
                 secureTextEntry={!showConfirmPassword}
               />
-
               <Pressable
                 style={styles.eyeButton}
                 onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -265,6 +347,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 13,
   },
+  helperText: {
+    color: "#cbd5e1",
+    fontSize: 11,
+  },
   input: {
     borderWidth: 1,
     borderColor: "white",
@@ -272,6 +358,39 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     color: "white",
     backgroundColor: "rgba(0, 0, 0, 0.25)",
+  },
+  uploadBtn: {
+    backgroundColor: "rgba(56, 189, 248, 0.16)",
+    borderWidth: 1,
+    borderColor: "#38bdf8",
+    padding: 11,
+    borderRadius: 6,
+    alignItems: "center",
+  },
+  uploadBtnText: {
+    color: "#38bdf8",
+    fontWeight: "bold",
+  },
+  imagePreviewContainer: {
+    alignItems: "center",
+    gap: 6,
+  },
+  imagePreview: {
+    width: "100%",
+    height: 150,
+    resizeMode: "contain",
+    borderRadius: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.25)",
+  },
+  removePhotoText: {
+    color: "#fca5a5",
+    fontSize: 12,
+    textDecorationLine: "underline",
+  },
+  orText: {
+    color: "#cbd5e1",
+    fontSize: 12,
+    textAlign: "center",
   },
   passwordContainer: {
     flexDirection: "row",

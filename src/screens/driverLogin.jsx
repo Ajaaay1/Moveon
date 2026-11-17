@@ -22,7 +22,7 @@ export default function DriverLoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!emailOrPhone.trim() || !password) {
       Alert.alert(
         "Missing Field",
@@ -32,7 +32,7 @@ export default function DriverLoginScreen() {
     }
 
     // 3. Authenticate using AuthContext (checking email/contact info & role)
-    const result = loginUser(emailOrPhone, password, "driver");
+    const result = await loginUser(emailOrPhone, password, "driver");
 
     if (!result.success) {
       Alert.alert("Login Failed", result.message);
