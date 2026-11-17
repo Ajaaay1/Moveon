@@ -572,7 +572,7 @@ export default function HomeScreen() {
                   {Array.from({ length: 5 }, (_, index) => (
                     <Ionicons
                       key={index}
-                      name={activeBooking.driverDetails?.averageRating >= index + 1 ? "star" : "star-outline"}
+                      name={Math.round(activeBooking.driverDetails?.averageRating || 0) >= index + 1 ? "star" : "star-outline"}
                       size={14}
                       color="#f59e0b"
                     />
