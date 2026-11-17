@@ -169,7 +169,7 @@ export default function HomeScreen() {
     }
   };
 
-  const handleConfirmBooking = () => {
+  const handleConfirmBooking = async () => {
     if (!destination) {
       Alert.alert("Destination Required", "Please select a destination by tapping on the map.");
       return;
@@ -181,7 +181,7 @@ export default function HomeScreen() {
     const calculatedFare = `₱${(50 + (distance * 25)).toFixed(2)}`;
 
     // Pushes full booking context to AuthContext so DriverHomeScreen can pick it up
-    createBooking({
+    const result = await createBooking({
       passenger: currentUser?.full_name || "Passenger",
       service: selectedService || "Motorcycle",
       pickupCoords: currentLocation,
@@ -191,6 +191,11 @@ export default function HomeScreen() {
       distance: `${distance.toFixed(2)} km`,
       fare: calculatedFare,
     });
+
+    if (!result?.success) {
+      Alert.alert("Booking Failed", result?.message || "Your ride request could not be sent. Please try again.");
+      setIsFormOpen(true);
+    }
   };
 
   const handleCancelBooking = () => {
