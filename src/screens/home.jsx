@@ -299,13 +299,49 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.drawerContent}>
-          <TouchableOpacity style={styles.drawerItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/historyPassenger")}
+          >
             <Ionicons name="document-text-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>History</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.drawerItem} activeOpacity={0.7}>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/savedplacesPassenger")}
+          >
             <Ionicons name="bookmark-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Saved Places</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/inboxPassenger")}
+          >
+            <Ionicons name="mail-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Inbox</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/paymentPassenger")}
+          >
+            <Ionicons name="card-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Payment Methods</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/supportPassenger")}
+          >
+            <Ionicons name="help-circle-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Help & Support</Text>
           </TouchableOpacity>
         </View>
 
