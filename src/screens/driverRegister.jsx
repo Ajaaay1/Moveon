@@ -30,6 +30,7 @@ export default function DriverRegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [licenseId, setLicenseId] = useState("");
   const [plateNumber, setPlateNumber] = useState("");
+  const [vehicleType, setVehicleType] = useState("");
 
   const handleSave = async () => {
     if (!name.trim() || !lastName.trim()) {
@@ -57,6 +58,11 @@ export default function DriverRegisterScreen() {
       return;
     }
 
+    if (!vehicleType.trim()) {
+      Alert.alert("Missing Field", "Please enter your vehicle type or model.");
+      return;
+    }
+
     if (!password) {
       Alert.alert("Missing Field", "Please enter a password.");
       return;
@@ -77,6 +83,7 @@ export default function DriverRegisterScreen() {
       role: "driver",
       licenseId: licenseId.trim(),
       plateNumber: plateNumber.trim().toUpperCase(),
+      vehicleType: vehicleType.trim(),
     });
 
     if (!result.success) {
@@ -164,6 +171,15 @@ export default function DriverRegisterScreen() {
               autoCapitalize="characters"
               onChangeText={setLicenseId}
               value={licenseId}
+            />
+
+            <Text style={styles.label}>Vehicle Type / Model</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Yamaha NMAX"
+              placeholderTextColor="#ccc"
+              onChangeText={setVehicleType}
+              value={vehicleType}
             />
 
             <Text style={styles.label}>Vehicle Plate Number</Text>
