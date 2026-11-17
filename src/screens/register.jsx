@@ -70,7 +70,7 @@ export default function RegisterScreen() {
       [
         {
           text: "OK",
-          onPress: () => router.replace("/"),
+          onPress: () => router.replace("/home"),
         },
       ]
     );

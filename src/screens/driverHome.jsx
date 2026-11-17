@@ -174,10 +174,17 @@ export default function DriverHomeScreen() {
             <Logo size={55} />
           </View>
           <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
-          <Text style={styles.profileCaption}>Driver Account</Text>
+          <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"}</Text>
         </View>
 
         <View style={styles.drawerContent}>
+          <View style={styles.drawerSection}>
+            <Text style={styles.drawerTitle}>Account Details</Text>
+            <Text style={styles.drawerSubtitle}>Contact: {currentUser?.phone || "Not provided"}</Text>
+            <Text style={styles.drawerSubtitle}>Plate Number: {currentUser?.driverProfile?.plate_number || "Not provided"}</Text>
+            <Text style={styles.drawerSubtitle}>License ID: {currentUser?.driverProfile?.license_id || (currentUser?.driverProfile?.license_image_path ? "License photo uploaded" : "Not provided")}</Text>
+          </View>
+
           <View style={styles.drawerSection}>
             <View style={styles.drawerRow}>
               <View>

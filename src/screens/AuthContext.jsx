@@ -15,14 +15,33 @@ export const AuthProvider = ({ children }) => {
       return null;
     }
 
-    const { data, error } = await supabase
+    const { data: profile, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", user.id)
       .single();
 
     if (error) throw error;
-    const account = { ...data, email: user.email };
+
+    let driverProfile = null;
+    if (profile.role === "driver") {
+      const { data, error: driverError } = await supabase
+        .from("driver_profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (driverError) throw driverError;
+      driverProfile = data;
+    }
+
+    const account = {
+      ...profile,
+      name: profile.full_name,
+      email: profile.email || user.email || "",
+      driverProfile,
+    };
+
     setCurrentUser(account);
     return account;
   };
@@ -51,10 +70,9 @@ export const AuthProvider = ({ children }) => {
         setSession(nextSession);
         if (!nextSession) setCurrentUser(null);
         else {
-          // Defer the profile request until after the auth callback.
-          Promise.resolve().then(() => loadProfile(nextSession.user)).catch(
-            (error) => console.warn("Profile load error:", error.message)
-          );
+          Promise.resolve()
+            .then(() => loadProfile(nextSession.user))
+            .catch((error) => console.warn("Profile load error:", error.message));
         }
       }
     );
@@ -68,27 +86,27 @@ export const AuthProvider = ({ children }) => {
   const registerUser = async (newUser) => {
     const fullName = newUser.fullName ||
       [newUser.name, newUser.midName, newUser.lastName].filter(Boolean).join(" ");
+    const email = newUser.email.trim().toLowerCase();
 
     const metadata = {
       full_name: fullName,
       phone: newUser.contactInfo || null,
       role: newUser.role,
-      license_id: newUser.licenseId || null,
-      plate_number: newUser.plateNumber || null,
     };
 
     const { data, error } = await supabase.auth.signUp({
-      email: newUser.email.trim().toLowerCase(),
+      email,
       password: newUser.password,
       options: { data: metadata },
     });
 
     if (error) return { success: false, message: error.message };
 
-    if (!data.session) {
+    // Prototype signup expects Confirm email to be disabled in Supabase Auth.
+    if (!data.user || !data.session) {
       return {
         success: false,
-        message: "Account created. Please confirm your email, then log in. For driver registration, disable email confirmation during initial testing so the license details can be uploaded immediately.",
+        message: "The account was created, but email confirmation is still enabled. Turn off Confirm email in Supabase Authentication settings for prototype registration.",
       };
     }
 
@@ -108,7 +126,9 @@ export const AuthProvider = ({ children }) => {
             upsert: false,
           });
 
-        if (uploadError) return { success: false, message: uploadError.message };
+        if (uploadError) {
+          return { success: false, message: "Account created, but license photo upload failed: " + uploadError.message };
+        }
         licenseImagePath = filePath;
       }
 
@@ -122,11 +142,20 @@ export const AuthProvider = ({ children }) => {
           verification_status: "pending",
         });
 
-      if (driverError) return { success: false, message: driverError.message };
+      if (driverError) {
+        return { success: false, message: "Account created, but driver details could not be saved: " + driverError.message };
+      }
     }
 
-    await loadProfile(data.user);
-    return { success: true, user: data.user };
+    try {
+      const profile = await loadProfile(data.user);
+      return { success: true, user: profile };
+    } catch (profileError) {
+      return {
+        success: false,
+        message: "Your account was created, but the profile could not be loaded: " + profileError.message,
+      };
+    }
   };
 
   const loginUser = async (identifier, password, role) => {
@@ -137,53 +166,25 @@ export const AuthProvider = ({ children }) => {
 
     if (error) return { success: false, message: error.message };
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", data.user.id)
-      .single();
+    try {
+      const profile = await loadProfile(data.user);
 
-    if (profileError) {
-      await supabase.auth.signOut();
-      return { success: false, message: profileError.message };
-    }
-
-    if (profile.role !== role) {
-      await supabase.auth.signOut();
-      return {
-        success: false,
-        message: role === "driver"
-          ? "This account is not registered as a driver."
-          : "This account is not registered as a passenger.",
-      };
-    }
-
-    if (role === "driver") {
-      const { data: driver, error: driverError } = await supabase
-        .from("driver_profiles")
-        .select("verification_status")
-        .eq("user_id", data.user.id)
-        .single();
-
-      if (driverError) {
-        await supabase.auth.signOut();
-        return { success: false, message: "Driver profile was not found." };
-      }
-
-      if (driver.verification_status !== "approved") {
+      if (!profile || profile.role !== role) {
         await supabase.auth.signOut();
         return {
           success: false,
-          message: driver.verification_status === "rejected"
-            ? "Your driver application was rejected. Please contact Moveon support."
-            : "Your driver account is pending verification. You cannot access driver features yet.",
+          message: role === "driver"
+            ? "This account is not registered as a driver."
+            : "This account is not registered as a passenger.",
         };
       }
-    }
 
-    const user = { ...profile, email: data.user.email };
-    setCurrentUser(user);
-    return { success: true, user };
+      // Driver verification is not enforced while Moveon is a presentation prototype.
+      return { success: true, user: profile };
+    } catch (profileError) {
+      await supabase.auth.signOut();
+      return { success: false, message: profileError.message };
+    }
   };
 
   const logoutUser = async () => {
