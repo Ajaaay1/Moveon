@@ -338,14 +338,6 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Polyline from Rider to Pickup when Accepted */}
-        {activeBooking && activeBooking.status !== "Waiting for driver" && riderLocation && currentLocation && (
-          <Polyline
-            coordinates={[riderLocation, currentLocation]}
-            strokeWidth={4}
-            strokeColor="#10b981"
-          />
-        )}
       </MapView>
 
       {/* Menu Button */}
