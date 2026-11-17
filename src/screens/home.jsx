@@ -5,8 +5,7 @@ import {
   TouchableOpacity, 
   View, 
   Alert, 
-  Animated, 
-  TextInput,
+  Animated,
   Modal
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -429,7 +428,7 @@ export default function HomeScreen() {
       {isServiceModalOpen && (
         <View style={styles.expandedContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Hi! Naka move-on kana ba?</Text>
+            <Text style={styles.modalTitle}>Book a Ride</Text>
             <TouchableOpacity onPress={() => setIsServiceModalOpen(false)}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
@@ -617,7 +616,7 @@ export default function HomeScreen() {
           <View style={styles.ratingModalCard}>
             <Ionicons name="checkmark-circle" size={42} color="#10b981" />
             <Text style={styles.ratingModalTitle}>Ride Completed!</Text>
-            <Text style={styles.ratingModalText}>How was your rider?</Text>
+            <Text style={styles.ratingModalText}>How was your driver?</Text>
             <View style={styles.ratingStars}>
               {Array.from({ length: 5 }, (_, index) => (
                 <TouchableOpacity key={index} onPress={() => setSelectedRating(index + 1)}>
@@ -630,7 +629,7 @@ export default function HomeScreen() {
               ))}
             </View>
             <Text style={styles.ratingModalText}>
-              {selectedRating ? `${selectedRating} out of 5 stars` : "Tap a star to rate your rider"}
+              {selectedRating ? `${selectedRating} out of 5 stars` : "Tap a star to rate your driver"}
             </Text>
             <TouchableOpacity
               style={[styles.confirmBookButton, selectedRating === 0 && styles.disabledButton]}
