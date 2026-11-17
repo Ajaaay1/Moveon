@@ -66,29 +66,42 @@ using (
 );
 
 drop policy if exists "Passengers cancel own searching bookings" on public.bookings;
-create policy "Passengers cancel own searching bookings"
+drop policy if exists "Drivers accept and update assigned bookings" on public.bookings;
+drop policy if exists "Users update own or assigned bookings" on public.bookings;
+create policy "Users update own or assigned bookings"
 on public.bookings for update to authenticated
 using (
-  passenger_id = (select auth.uid()) and status = 'searching'
+  (passenger_id = (select auth.uid()) and status = 'searching')
+  or (
+    exists (
+      select 1 from public.profiles p
+      where p.id = (select auth.uid()) and p.role = 'driver'
+    )
+    and (status = 'searching' or driver_id = (select auth.uid()))
+  )
 )
 with check (
-  passenger_id = (select auth.uid()) and status = 'cancelled'
+  (passenger_id = (select auth.uid()) and status = 'cancelled')
+  or (
+    driver_id = (select auth.uid())
+    and status in ('accepted', 'arrived', 'in_progress', 'completed')
+    and exists (
+      select 1 from public.profiles p
+      where p.id = (select auth.uid()) and p.role = 'driver'
+    )
+  )
 );
 
-drop policy if exists "Drivers accept and update assigned bookings" on public.bookings;
-create policy "Drivers accept and update assigned bookings"
-on public.bookings for update to authenticated
-using (
-  exists (
-    select 1 from public.profiles p
-    where p.id = (select auth.uid()) and p.role = 'driver'
-  )
-  and (status = 'searching' or driver_id = (select auth.uid()))
-)
-with check (
-  driver_id = (select auth.uid())
-  and status in ('accepted', 'arrived', 'in_progress', 'completed')
-);
+create index if not exists bookings_passenger_created_idx
+  on public.bookings (passenger_id, created_at desc);
+create index if not exists bookings_driver_status_created_idx
+  on public.bookings (driver_id, status, created_at desc);
+create index if not exists bookings_status_created_idx
+  on public.bookings (status, created_at desc);
+create index if not exists rider_ratings_driver_idx
+  on public.rider_ratings (driver_id);
+create index if not exists rider_ratings_passenger_idx
+  on public.rider_ratings (passenger_id);
 
 create table if not exists public.rider_ratings (
   id uuid primary key default gen_random_uuid(),
