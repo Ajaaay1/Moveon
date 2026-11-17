@@ -7,7 +7,6 @@ import {
   Alert, 
   Animated, 
   TextInput,
-  ActivityIndicator,
   Modal
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -328,15 +327,6 @@ export default function HomeScreen() {
         {/* Destination Marker */}
         {destination && (
           <Marker coordinate={destination} title="Destination" pinColor="#ef4444" />
-        )}
-
-        {/* Rider Location Marker when Driver Accepts */}
-        {activeBooking && activeBooking.status !== "Waiting for driver" && riderLocation && (
-          <Marker coordinate={riderLocation} title={`Rider: ${riderInfo?.name}`}>
-            <View style={styles.riderMarker}>
-              <Ionicons name="bicycle" size={24} color="#ffffff" />
-            </View>
-          </Marker>
         )}
 
         {/* Calculated road route to the passenger destination */}
