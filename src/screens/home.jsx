@@ -423,10 +423,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.drawerLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-          <Text style={styles.drawerLogoutText}>Log Out</Text>
-        </TouchableOpacity>
+        {!activeBooking && (
+          <TouchableOpacity style={styles.drawerLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+            <Text style={styles.drawerLogoutText}>Log Out</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* Service Selection Sheet */}
