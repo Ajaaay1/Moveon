@@ -9,6 +9,10 @@ create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
   passenger_id uuid not null references public.profiles(id) on delete cascade,
   driver_id uuid references public.profiles(id) on delete set null,
+  driver_name text,
+  driver_phone text,
+  driver_vehicle_type text,
+  driver_plate_number text,
   passenger_name text not null,
   service text not null default 'Motorcycle',
   pickup text not null,
@@ -22,6 +26,15 @@ create table if not exists public.bookings (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.bookings
+  add column if not exists driver_name text,
+  add column if not exists driver_phone text,
+  add column if not exists driver_vehicle_type text,
+  add column if not exists driver_plate_number text;
+
+drop policy if exists "Passengers read assigned driver profiles" on public.profiles;
+drop policy if exists "Passengers read assigned driver details" on public.driver_profiles;
 
 alter table public.bookings enable row level security;
 grant select, insert, update on public.bookings to authenticated;
@@ -75,29 +88,6 @@ using (
 with check (
   driver_id = (select auth.uid())
   and status in ('accepted', 'arrived', 'in_progress', 'completed')
-);
-
-drop policy if exists "Passengers read assigned driver profiles" on public.profiles;
-create policy "Passengers read assigned driver profiles"
-on public.profiles for select to authenticated
-using (
-  exists (
-    select 1 from public.bookings b
-    where b.passenger_id = (select auth.uid())
-      and b.driver_id = profiles.id
-  )
-);
-
-drop policy if exists "Passengers read assigned driver details" on public.driver_profiles;
-create policy "Passengers read assigned driver details"
-on public.driver_profiles for select to authenticated
-using (
-  (select auth.uid()) = user_id
-  or exists (
-    select 1 from public.bookings b
-    where b.passenger_id = (select auth.uid())
-      and b.driver_id = driver_profiles.user_id
-  )
 );
 
 create table if not exists public.rider_ratings (
