@@ -339,9 +339,14 @@ export default function HomeScreen() {
 
       </MapView>
 
-      {/* Menu Button */}
-      {!activeBooking && (
-        <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer} activeOpacity={0.8}>
+      {/* Keep passenger drawer available during an active booking. */}
+      {!isRatingModalOpen && (
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={toggleDrawer}
+          activeOpacity={0.8}
+          accessibilityLabel="Open passenger menu"
+        >
           <Ionicons name="menu" size={24} color="#000" />
         </TouchableOpacity>
       )}
@@ -537,6 +542,11 @@ export default function HomeScreen() {
                   ? "Your rider has arrived"
                   : "Passenger picked up"}
           </Text>
+          {activeBooking.status === "Arrived at Pick Up" && (
+            <Text style={styles.bookingHelpText}>
+              Your driver is waiting at the pickup point. Meet your driver; the destination route will appear after the driver confirms pickup.
+            </Text>
+          )}
 
           <View style={styles.fareRow}>
             <View>
@@ -679,6 +689,7 @@ const styles = StyleSheet.create({
     elevation: 15,
   },
   riderStatusHeader: { fontSize: 18, fontWeight: 'bold', color: '#10b981', marginBottom: 12 },
+  bookingHelpText: { color: '#64748b', fontSize: 12, lineHeight: 17, marginBottom: 10 },
   fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   smallLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
   bookingValue: { color: '#0f172a', fontSize: 13, fontWeight: '600', marginTop: 3 },
