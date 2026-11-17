@@ -12,10 +12,9 @@ import { AuthContext } from "./AuthContext";
 const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
 const STATUS_STEPS = [
-  "Waiting for driver",
   "Proceed to Pick Up",
   "Arrived at Pick Up",
-  "Start Ride",
+  "Passenger Picked Up",
   "Drop Off / Complete",
 ];
 
@@ -61,29 +60,38 @@ export default function DriverHomeScreen() {
     })();
   }, []);
 
-  // Fetch Mapbox route from driver's location to passenger pickup
+  // Before pickup, route to the passenger. After pickup, route to the destination.
   useEffect(() => {
     const fetchDriverRoute = async (start, end) => {
+      if (!MAPBOX_ACCESS_TOKEN) return;
       try {
         const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
         const response = await fetch(url);
         const data = await response.json();
-        
+
         if (data.routes && data.routes.length > 0) {
           const coords = data.routes[0].geometry.coordinates.map(coord => ({
             latitude: coord[1],
             longitude: coord[0],
           }));
           setRouteCoordinates(coords);
+        } else {
+          setRouteCoordinates([]);
         }
       } catch (error) {
         console.log("Error fetching driver route:", error);
+        setRouteCoordinates([]);
       }
     };
 
-    if (activeBooking && activeBooking.pickupCoords) {
+    const passengerPickedUp = activeBooking?.status === "Passenger Picked Up";
+    const routeTarget = passengerPickedUp
+      ? activeBooking?.destinationCoords
+      : activeBooking?.pickupCoords;
+
+    if (activeBooking && routeTarget) {
       const driverStart = { latitude: region.latitude, longitude: region.longitude };
-      fetchDriverRoute(driverStart, activeBooking.pickupCoords);
+      fetchDriverRoute(driverStart, routeTarget);
     } else {
       setRouteCoordinates([]);
     }
@@ -118,16 +126,16 @@ export default function DriverHomeScreen() {
 
   const handleBookingStatus = async () => {
     const currentIndex = STATUS_STEPS.indexOf(activeBooking.status);
-    if (currentIndex < STATUS_STEPS.length - 1) {
-      const nextStatus = STATUS_STEPS[currentIndex + 1];
-      const result = await updateBookingStatus(nextStatus);
-      if (!result?.success) {
-        Alert.alert("Update Failed", result?.message || "Could not update this booking.");
-        return;
-      }
-      if (nextStatus === "Drop Off / Complete") {
-        Alert.alert("Ride Completed", "The booking has been successfully completed.");
-      }
+    if (currentIndex === -1 || currentIndex >= STATUS_STEPS.length - 1) return;
+
+    const nextStatus = STATUS_STEPS[currentIndex + 1];
+    const result = await updateBookingStatus(nextStatus);
+    if (!result?.success) {
+      Alert.alert("Update Failed", result?.message || "Could not update this booking.");
+      return;
+    }
+    if (nextStatus === "Drop Off / Complete") {
+      Alert.alert("Ride Completed", "The passenger has been dropped off.");
     }
   };
 
@@ -152,8 +160,8 @@ export default function DriverHomeScreen() {
         )}
 
         {/* Dynamic Passenger Destination Marker */}
-        {activeBooking && activeBooking.destinationCoords && (
-          <Marker coordinate={activeBooking.destinationCoords} title="Destination" pinColor="#ef4444" />
+        {activeBooking && activeBooking.status === "Passenger Picked Up" && activeBooking.destinationCoords && (
+          <Marker coordinate={activeBooking.destinationCoords} title="Passenger Destination" pinColor="#ef4444" />
         )}
 
         {/* Mapbox Road-Snapping Route for Driver */}
@@ -193,6 +201,7 @@ export default function DriverHomeScreen() {
           <View style={styles.drawerSection}>
             <Text style={styles.drawerTitle}>Account Details</Text>
             <Text style={styles.drawerSubtitle}>Contact: {currentUser?.phone || "Not provided"}</Text>
+            <Text style={styles.drawerSubtitle}>Vehicle: {currentUser?.driverProfile?.vehicle_type || "Not provided"}</Text>
             <Text style={styles.drawerSubtitle}>Plate Number: {currentUser?.driverProfile?.plate_number || "Not provided"}</Text>
             <Text style={styles.drawerSubtitle}>License ID: {currentUser?.driverProfile?.license_id || (currentUser?.driverProfile?.license_image_path ? "License photo uploaded" : "Not provided")}</Text>
           </View>
@@ -272,12 +281,20 @@ export default function DriverHomeScreen() {
               <Text style={styles.fare}>{activeBooking.fare}</Text>
             </View>
             <Text style={styles.bookingLine}>Pickup: {activeBooking.pickup}</Text>
-            <Text style={styles.bookingLine}>Destination: {activeBooking.destination}</Text>
+            {activeBooking.status === "Passenger Picked Up" && (
+              <Text style={styles.bookingLine}>Destination: {activeBooking.destination}</Text>
+            )}
             <View style={styles.statusBox}>
               <Text style={styles.statusText}>Status: {activeBooking.status}</Text>
             </View>
             <TouchableOpacity style={styles.bookButton} onPress={handleBookingStatus}>
-              <Text style={styles.bookButtonText}>Advance Step</Text>
+              <Text style={styles.bookButtonText}>
+                {activeBooking.status === "Proceed to Pick Up"
+                  ? "Arrived at Pick Up"
+                  : activeBooking.status === "Arrived at Pick Up"
+                    ? "Passenger Picked Up"
+                    : "Complete Ride"}
+              </Text>
             </TouchableOpacity>
           </>
         ) : isOnline ? (
