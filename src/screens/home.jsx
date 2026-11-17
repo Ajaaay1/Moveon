@@ -289,7 +289,11 @@ export default function HomeScreen() {
             <Logo size={55} />
           </View>
           <TouchableOpacity style={styles.profileNameRow} activeOpacity={0.7}>
-            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
+            <View>
+              <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
+              {!!currentUser?.email && <Text style={styles.profileEmail}>{currentUser.email}</Text>}
+              {!!currentUser?.phone && <Text style={styles.profileEmail}>{currentUser.phone}</Text>}
+            </View>
             <Ionicons name="chevron-forward" size={18} color="#0f172a" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
@@ -474,6 +478,7 @@ const styles = StyleSheet.create({
   avatarContainer: { width: 75, height: 75, borderRadius: 37.5, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   profileNameRow: { flexDirection: 'row', alignItems: 'center' },
   profileName: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
+  profileEmail: { fontSize: 12, color: '#475569', marginTop: 3 },
   drawerContent: { flex: 1, paddingTop: 10, paddingHorizontal: 16 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 },
   drawerItemText: { fontSize: 16, fontWeight: '500', color: '#0f172a', marginLeft: 16 },

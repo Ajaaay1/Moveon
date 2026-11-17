@@ -120,7 +120,7 @@ export default function DriverRegisterScreen() {
       [
         {
           text: "OK",
-          onPress: () => router.replace("/driver/login"),
+          onPress: () => router.replace("/driverHome"),
         },
       ]
     );

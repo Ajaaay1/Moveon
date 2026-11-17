@@ -8,10 +8,13 @@ revoke all on schema private from public, anon, authenticated;
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null,
+  email text,
   phone text,
   role text not null check (role in ('passenger', 'driver')),
   created_at timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists email text;
 
 create table if not exists public.driver_profiles (
   user_id uuid primary key references public.profiles(id) on delete cascade,
@@ -70,14 +73,19 @@ begin
     else 'passenger'
   end;
 
-  insert into public.profiles (id, full_name, phone, role)
+  insert into public.profiles (id, full_name, email, phone, role)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data ->> 'full_name', ''), 'New User'),
+    new.email,
     new.raw_user_meta_data ->> 'phone',
     user_role
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update
+    set full_name = excluded.full_name,
+        email = excluded.email,
+        phone = excluded.phone,
+        role = excluded.role;
 
   return new;
 end;
