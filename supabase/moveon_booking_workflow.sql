@@ -37,13 +37,15 @@ drop policy if exists "Passengers read assigned driver profiles" on public.profi
 drop policy if exists "Passengers read assigned driver details" on public.driver_profiles;
 
 alter table public.bookings enable row level security;
-grant select, insert, update on public.bookings to authenticated;
+grant select, insert on public.bookings to authenticated;
 
 drop policy if exists "Passengers create own bookings" on public.bookings;
 create policy "Passengers create own bookings"
 on public.bookings for insert to authenticated
 with check (
   passenger_id = (select auth.uid())
+  and driver_id is null
+  and status = 'searching'
   and exists (
     select 1 from public.profiles p
     where p.id = (select auth.uid()) and p.role = 'passenger'
@@ -91,6 +93,17 @@ with check (
     )
   )
 );
+
+revoke update on public.bookings from authenticated;
+grant update (
+  status,
+  updated_at,
+  driver_id,
+  driver_name,
+  driver_phone,
+  driver_vehicle_type,
+  driver_plate_number
+) on public.bookings to authenticated;
 
 create index if not exists bookings_passenger_created_idx
   on public.bookings (passenger_id, created_at desc);
