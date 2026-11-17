@@ -19,30 +19,29 @@ const mapBooking = (row) => ({
   })[row.status] || row.status,
 });
 
-const getDriverDetails = async (driverId) => {
-  if (!driverId) return null;
+const getDriverDetails = async (booking) => {
+  if (!booking?.driver_id) return null;
 
-  const [profileResult, vehicleResult, ratingsResult] = await Promise.all([
-    supabase.from("profiles").select("id, full_name, phone").eq("id", driverId).maybeSingle(),
-    supabase.from("driver_profiles").select("vehicle_type, plate_number").eq("user_id", driverId).maybeSingle(),
-    supabase.from("rider_ratings").select("rating").eq("driver_id", driverId),
-  ]);
+  const { data, error } = await supabase
+    .from("rider_ratings")
+    .select("rating")
+    .eq("driver_id", booking.driver_id);
 
-  if (profileResult.error) throw profileResult.error;
-  if (vehicleResult.error) throw vehicleResult.error;
-  if (ratingsResult.error) throw ratingsResult.error;
+  if (error) throw error;
 
-  const ratings = (ratingsResult.data || []).map((item) => Number(item.rating)).filter((value) => value >= 1 && value <= 5);
+  const ratings = (data || [])
+    .map((item) => Number(item.rating))
+    .filter((value) => value >= 1 && value <= 5);
   const averageRating = ratings.length
     ? ratings.reduce((total, value) => total + value, 0) / ratings.length
     : null;
 
   return {
-    id: driverId,
-    name: profileResult.data?.full_name || "Driver",
-    phone: profileResult.data?.phone || "",
-    vehicleType: vehicleResult.data?.vehicle_type || "Vehicle not specified",
-    plateNumber: vehicleResult.data?.plate_number || "Plate not provided",
+    id: booking.driver_id,
+    name: booking.driver_name || "Driver",
+    phone: booking.driver_phone || "",
+    vehicleType: booking.driver_vehicle_type || "Vehicle not specified",
+    plateNumber: booking.driver_plate_number || "Plate not provided",
     averageRating,
     ratingCount: ratings.length,
   };
@@ -167,7 +166,7 @@ export const AuthProvider = ({ children }) => {
         let existingRating = null;
         if (data.driver_id) {
           try {
-            driverDetails = await getDriverDetails(data.driver_id);
+            driverDetails = await getDriverDetails(data);
           } catch (driverError) {
             console.warn("Driver details load error:", driverError.message);
           }
@@ -368,7 +367,15 @@ export const AuthProvider = ({ children }) => {
 
     const { data, error } = await supabase
       .from("bookings")
-      .update({ driver_id: session.user.id, status: "accepted", updated_at: new Date().toISOString() })
+      .update({
+        driver_id: session.user.id,
+        driver_name: currentUser?.full_name || "Driver",
+        driver_phone: currentUser?.phone || null,
+        driver_vehicle_type: currentUser?.driverProfile?.vehicle_type || null,
+        driver_plate_number: currentUser?.driverProfile?.plate_number || null,
+        status: "accepted",
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", bookingId)
       .eq("status", "searching")
       .select("*")
@@ -460,7 +467,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const driverDetails = await getDriverDetails(activeBooking.driver_id);
+      const driverDetails = await getDriverDetails(activeBooking);
       setActiveBooking((old) => old ? { ...old, driverDetails, passengerRating: rating } : old);
     } catch (error) {
       console.warn("Updated rider rating load error:", error.message);
