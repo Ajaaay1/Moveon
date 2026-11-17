@@ -565,6 +565,9 @@ export default function HomeScreen() {
                   {" • "}
                   {activeBooking.driverDetails?.plateNumber || "Plate not provided"}
                 </Text>
+                {!!activeBooking.driverDetails?.phone && (
+                  <Text style={styles.riderSubtext}>Contact: {activeBooking.driverDetails.phone}</Text>
+                )}
                 <View style={styles.ratingRow}>
                   {Array.from({ length: 5 }, (_, index) => (
                     <Ionicons
