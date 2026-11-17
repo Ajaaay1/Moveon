@@ -307,7 +307,7 @@ export default function DriverHomeScreen() {
                   <Text style={styles.fare}>{booking.fare}</Text>
                 </View>
                 <Text style={styles.bookingLine}>Pickup: {booking.pickup}</Text>
-                <Text style={styles.bookingLine}>Destination: {booking.destination}</Text>
+                <Text style={styles.bookingLine}>Destination will appear after passenger pickup.</Text>
                 <TouchableOpacity style={styles.bookButton} onPress={() => handleAcceptBooking(booking.id)}>
                   <Text style={styles.bookButtonText}>Accept Booking</Text>
                 </TouchableOpacity>
