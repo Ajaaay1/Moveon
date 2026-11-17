@@ -26,7 +26,7 @@ const DEMO_HISTORY = [
 
 export default function DriverHomeScreen() {
   const router = useRouter();
-  const { currentUser, activeBooking, updateBookingStatus, clearBooking, logoutUser } = useContext(AuthContext);
+  const { currentUser, activeBooking, incomingBookings, acceptBooking, updateBookingStatus, logoutUser } = useContext(AuthContext);
 
   const [isOnline, setIsOnline] = useState(false);
   const [autoAccept, setAutoAccept] = useState(false);
@@ -116,13 +116,25 @@ export default function DriverHomeScreen() {
     ]);
   };
 
-  const handleBookingStatus = () => {
+  const handleBookingStatus = async () => {
     const currentIndex = STATUS_STEPS.indexOf(activeBooking.status);
     if (currentIndex < STATUS_STEPS.length - 1) {
-      updateBookingStatus(STATUS_STEPS[currentIndex + 1]);
-    } else {
-      Alert.alert("Ride Completed", "The booking has been successfully completed.");
-      clearBooking();
+      const nextStatus = STATUS_STEPS[currentIndex + 1];
+      const result = await updateBookingStatus(nextStatus);
+      if (!result?.success) {
+        Alert.alert("Update Failed", result?.message || "Could not update this booking.");
+        return;
+      }
+      if (nextStatus === "Drop Off / Complete") {
+        Alert.alert("Ride Completed", "The booking has been successfully completed.");
+      }
+    }
+  };
+
+  const handleAcceptBooking = async (bookingId) => {
+    const result = await acceptBooking(bookingId);
+    if (!result?.success) {
+      Alert.alert("Unable to Accept", result?.message || "This booking is no longer available.");
     }
   };
 
@@ -254,7 +266,7 @@ export default function DriverHomeScreen() {
           <>
             <View style={styles.bookingHeader}>
               <View>
-                <Text style={styles.panelTitle}>Active Request</Text>
+                <Text style={styles.panelTitle}>Active Booking</Text>
                 <Text style={styles.panelSubtitle}>{activeBooking.passenger}</Text>
               </View>
               <Text style={styles.fare}>{activeBooking.fare}</Text>
@@ -265,15 +277,32 @@ export default function DriverHomeScreen() {
               <Text style={styles.statusText}>Status: {activeBooking.status}</Text>
             </View>
             <TouchableOpacity style={styles.bookButton} onPress={handleBookingStatus}>
-              <Text style={styles.bookButtonText}>
-                {activeBooking.status === "Waiting for driver" ? "Accept Booking" : "Advance Step"}
-              </Text>
+              <Text style={styles.bookButtonText}>Advance Step</Text>
             </TouchableOpacity>
+          </>
+        ) : isOnline ? (
+          <>
+            <Text style={styles.panelTitle}>Incoming Ride Requests</Text>
+            {incomingBookings?.length ? incomingBookings.map((booking) => (
+              <View key={booking.id} style={styles.requestCard}>
+                <View style={styles.bookingHeader}>
+                  <Text style={styles.panelSubtitle}>{booking.passenger}</Text>
+                  <Text style={styles.fare}>{booking.fare}</Text>
+                </View>
+                <Text style={styles.bookingLine}>Pickup: {booking.pickup}</Text>
+                <Text style={styles.bookingLine}>Destination: {booking.destination}</Text>
+                <TouchableOpacity style={styles.bookButton} onPress={() => handleAcceptBooking(booking.id)}>
+                  <Text style={styles.bookButtonText}>Accept Booking</Text>
+                </TouchableOpacity>
+              </View>
+            )) : (
+              <Text style={styles.panelSubtitle}>Waiting for incoming passenger bookings...</Text>
+            )}
           </>
         ) : (
           <>
-            <Text style={styles.panelTitle}>You are online</Text>
-            <Text style={styles.panelSubtitle}>Waiting for incoming passenger bookings...</Text>
+            <Text style={styles.panelTitle}>You are offline</Text>
+            <Text style={styles.panelSubtitle}>Turn on Driver Status in your drawer to receive bookings.</Text>
           </>
         )}
       </View>
@@ -316,7 +345,8 @@ const styles = StyleSheet.create({
   historyFare: { color: "#0284c7", fontWeight: "bold" },
   logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 17, paddingHorizontal: 22, borderTopWidth: 1, borderTopColor: "#e2e8f0" },
   logoutText: { color: "#ef4444", fontWeight: "bold", marginLeft: 12 },
-  bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10 },
+  bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10, maxHeight: "55%" },
+  requestCard: { borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 10, marginTop: 8 },
   bookingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   panelTitle: { color: "#0f172a", fontSize: 15, fontWeight: "bold" },
   panelSubtitle: { color: "#64748b", fontSize: 12, marginTop: 4 },
