@@ -8,6 +8,7 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState(null);
+  const [incomingBookings, setIncomingBookings] = useState([]);
 
   const loadProfile = async (user) => {
     if (!user) {
@@ -82,6 +83,82 @@ export const AuthProvider = ({ children }) => {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId || !currentUser?.role) {
+      setActiveBooking(null);
+      setIncomingBookings([]);
+      return;
+    }
+
+    let alive = true;
+
+    const refreshBookings = async () => {
+      if (currentUser.role === "passenger") {
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("passenger_id", userId)
+          .in("status", ["searching", "accepted", "arrived", "in_progress"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.warn("Passenger booking load error:", error.message);
+          return;
+        }
+        if (alive) setActiveBooking(data ? mapBooking(data) : null);
+      } else if (currentUser.role === "driver") {
+        const { data: waiting, error: waitingError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("status", "searching")
+          .order("created_at", { ascending: false });
+
+        if (waitingError) {
+          console.warn("Incoming bookings load error:", waitingError.message);
+          return;
+        }
+
+        const { data: assigned, error: assignedError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("driver_id", userId)
+          .in("status", ["accepted", "arrived", "in_progress"])
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (assignedError) console.warn("Assigned booking load error:", assignedError.message);
+        if (alive) {
+          setIncomingBookings((waiting || []).map(mapBooking));
+          setActiveBooking(assigned ? mapBooking(assigned) : null);
+        }
+      }
+    };
+
+    refreshBookings();
+
+    const channel = supabase
+      .channel("moveon-bookings-" + userId)
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "bookings",
+      }, refreshBookings)
+      .subscribe((status, error) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.warn("Booking realtime error:", error?.message || status);
+        }
+      });
+
+    return () => {
+      alive = false;
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id, currentUser?.role]);
 
   const registerUser = async (newUser) => {
     const fullName = newUser.fullName ||
@@ -201,24 +278,104 @@ export const AuthProvider = ({ children }) => {
       : { success: true, message: "Password reset email sent." };
   };
 
-  const createBooking = (booking) => {
-    setActiveBooking({
-      passenger: booking.passenger || currentUser?.full_name || "Passenger",
-      pickup: booking.pickup || "Current Location",
-      destination: booking.destinationText || booking.destination || "Selected Destination",
-      pickupCoords: booking.pickupCoords || null,
-      destinationCoords: booking.destinationCoords || null,
-      fare: booking.fare || "₱120.00",
-      distance: booking.distance || "3.5 km",
-      status: "Waiting for driver",
-    });
+  const mapBooking = (row) => ({
+    ...row,
+    passenger: row.passenger_name,
+    pickupCoords: row.pickup_coords,
+    destinationCoords: row.destination_coords,
+    destination: row.destination,
+    status: ({
+      searching: "Waiting for driver",
+      accepted: "Proceed to Pick Up",
+      arrived: "Arrived at Pick Up",
+      in_progress: "Start Ride",
+      completed: "Drop Off / Complete",
+      cancelled: "Cancelled",
+    })[row.status] || row.status,
+  });
+
+  const createBooking = async (booking) => {
+    if (!session?.user?.id) return { success: false, message: "Please log in again." };
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .insert({
+        passenger_id: session.user.id,
+        passenger_name: booking.passenger || currentUser?.full_name || "Passenger",
+        service: booking.service || "Motorcycle",
+        pickup: booking.pickup || "Current Location",
+        destination: booking.destinationText || booking.destination || "Selected Destination",
+        pickup_coords: booking.pickupCoords || null,
+        destination_coords: booking.destinationCoords || null,
+        fare: booking.fare || "₱120.00",
+        distance: booking.distance || "3.5 km",
+        status: "searching",
+      })
+      .select("*")
+      .single();
+
+    if (error) return { success: false, message: error.message };
+    setActiveBooking(mapBooking(data));
+    return { success: true, booking: mapBooking(data) };
   };
 
-  const updateBookingStatus = (status) => {
-    if (activeBooking) setActiveBooking({ ...activeBooking, status });
+  const acceptBooking = async (bookingId) => {
+    if (!session?.user?.id) return { success: false, message: "Please log in again." };
+
+    const { data, error } = await supabase
+      .from("bookings")
+      .update({ driver_id: session.user.id, status: "accepted", updated_at: new Date().toISOString() })
+      .eq("id", bookingId)
+      .eq("status", "searching")
+      .select("*")
+      .maybeSingle();
+
+    if (error) return { success: false, message: error.message };
+    if (!data) return { success: false, message: "This booking was already accepted by another driver." };
+    setActiveBooking(mapBooking(data));
+    setIncomingBookings((items) => items.filter((item) => item.id !== bookingId));
+    return { success: true, booking: mapBooking(data) };
   };
 
-  const clearBooking = () => setActiveBooking(null);
+  const updateBookingStatus = async (status) => {
+    if (!activeBooking?.id || !session?.user?.id) return { success: false };
+    const dbStatus = ({
+      "Proceed to Pick Up": "accepted",
+      "Arrived at Pick Up": "arrived",
+      "Start Ride": "in_progress",
+      "Drop Off / Complete": "completed",
+      "completed": "completed",
+      "cancelled": "cancelled",
+    })[status] || status;
+
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: dbStatus, updated_at: new Date().toISOString() })
+      .eq("id", activeBooking.id)
+      .eq("driver_id", session.user.id);
+
+    if (error) return { success: false, message: error.message };
+    if (dbStatus === "completed") setActiveBooking(null);
+    else setActiveBooking((old) => old ? { ...old, status } : old);
+    return { success: true };
+  };
+
+  const clearBooking = async () => {
+    if (!activeBooking?.id || !session?.user?.id) {
+      setActiveBooking(null);
+      return { success: true };
+    }
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled", updated_at: new Date().toISOString() })
+      .eq("id", activeBooking.id)
+      .eq("passenger_id", session.user.id)
+      .eq("status", "searching");
+
+    if (error) return { success: false, message: error.message };
+    setActiveBooking(null);
+    return { success: true };
+  };
 
   return (
     <AuthContext.Provider value={{
@@ -230,7 +387,9 @@ export const AuthProvider = ({ children }) => {
       logoutUser,
       resetPassword,
       activeBooking,
+      incomingBookings,
       createBooking,
+      acceptBooking,
       updateBookingStatus,
       clearBooking,
     }}>
