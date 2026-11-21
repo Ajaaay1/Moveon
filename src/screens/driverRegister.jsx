@@ -1,7 +1,6 @@
 import React, { useState, useContext } from "react";
 import {
   Alert,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import Logo from "../components/logo";
@@ -31,31 +29,8 @@ export default function DriverRegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [licenseId, setLicenseId] = useState("");
-  const [licenseImage, setLicenseImage] = useState(null);
   const [plateNumber, setPlateNumber] = useState("");
-
-  const chooseLicensePhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-    if (!permission.granted) {
-      Alert.alert(
-        "Permission Required",
-        "Please allow photo library access to attach your driver's license."
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setLicenseImage(result.assets[0].uri);
-      setLicenseId("");
-    }
-  };
+  const [vehicleType, setVehicleType] = useState("");
 
   const handleSave = async () => {
     if (!name.trim() || !lastName.trim()) {
@@ -73,16 +48,18 @@ export default function DriverRegisterScreen() {
       return;
     }
 
-    if (!licenseImage && !licenseId.trim()) {
-      Alert.alert(
-        "Driver's License Required",
-        "Please upload a license photo or enter your License ID."
-      );
+    if (!licenseId.trim()) {
+      Alert.alert("Missing Field", "Please enter your License ID.");
       return;
     }
 
     if (!plateNumber.trim()) {
       Alert.alert("Missing Field", "Please enter your vehicle plate number.");
+      return;
+    }
+
+    if (!vehicleType.trim()) {
+      Alert.alert("Missing Field", "Please enter your vehicle type or model.");
       return;
     }
 
@@ -105,8 +82,8 @@ export default function DriverRegisterScreen() {
       password,
       role: "driver",
       licenseId: licenseId.trim(),
-      licenseImageUri: licenseImage,
       plateNumber: plateNumber.trim().toUpperCase(),
+      vehicleType: vehicleType.trim(),
     });
 
     if (!result.success) {
@@ -120,7 +97,7 @@ export default function DriverRegisterScreen() {
       [
         {
           text: "OK",
-          onPress: () => router.replace("/driver/login"),
+          onPress: () => router.replace("/driverHome"),
         },
       ]
     );
@@ -186,41 +163,23 @@ export default function DriverRegisterScreen() {
               value={email}
             />
 
-            <Text style={styles.label}>Driver's License</Text>
-            <Text style={styles.helperText}>
-              Upload a license photo or enter your License ID. Only one is required.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.uploadBtn}
-              onPress={chooseLicensePhoto}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.uploadBtnText}>
-                {licenseImage ? "Change License Photo" : "Attach License Photo"}
-              </Text>
-            </TouchableOpacity>
-
-            {licenseImage ? (
-              <View style={styles.imagePreviewContainer}>
-                <Image source={{ uri: licenseImage }} style={styles.imagePreview} />
-                <TouchableOpacity onPress={() => setLicenseImage(null)}>
-                  <Text style={styles.removePhotoText}>Remove Photo</Text>
-                </TouchableOpacity>
-              </View>
-            ) : null}
-
-            <Text style={styles.orText}>Or enter License ID</Text>
+            <Text style={styles.label}>Driver's License ID</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter License ID"
               placeholderTextColor="#ccc"
               autoCapitalize="characters"
-              onChangeText={(value) => {
-                setLicenseId(value);
-                if (value.trim()) setLicenseImage(null);
-              }}
+              onChangeText={setLicenseId}
               value={licenseId}
+            />
+
+            <Text style={styles.label}>Vehicle Type / Model</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="e.g. Yamaha NMAX"
+              placeholderTextColor="#ccc"
+              onChangeText={setVehicleType}
+              value={vehicleType}
             />
 
             <Text style={styles.label}>Vehicle Plate Number</Text>
@@ -347,10 +306,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 13,
   },
-  helperText: {
-    color: "#cbd5e1",
-    fontSize: 11,
-  },
   input: {
     borderWidth: 1,
     borderColor: "white",
@@ -358,39 +313,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     color: "white",
     backgroundColor: "rgba(0, 0, 0, 0.25)",
-  },
-  uploadBtn: {
-    backgroundColor: "rgba(56, 189, 248, 0.16)",
-    borderWidth: 1,
-    borderColor: "#38bdf8",
-    padding: 11,
-    borderRadius: 6,
-    alignItems: "center",
-  },
-  uploadBtnText: {
-    color: "#38bdf8",
-    fontWeight: "bold",
-  },
-  imagePreviewContainer: {
-    alignItems: "center",
-    gap: 6,
-  },
-  imagePreview: {
-    width: "100%",
-    height: 150,
-    resizeMode: "contain",
-    borderRadius: 6,
-    backgroundColor: "rgba(0, 0, 0, 0.25)",
-  },
-  removePhotoText: {
-    color: "#fca5a5",
-    fontSize: 12,
-    textDecorationLine: "underline",
-  },
-  orText: {
-    color: "#cbd5e1",
-    fontSize: 12,
-    textAlign: "center",
   },
   passwordContainer: {
     flexDirection: "row",

@@ -5,9 +5,8 @@ import {
   TouchableOpacity, 
   View, 
   Alert, 
-  Animated, 
-  TextInput,
-  ActivityIndicator
+  Animated,
+  Modal
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from 'react-native-maps';
@@ -22,21 +21,24 @@ export default function HomeScreen() {
   const router = useRouter();
   
   // Connect AuthContext
-  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser } = useContext(AuthContext);
+  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser, submitRiderRating } = useContext(AuthContext);
   
   // Location States
   const [initialRegion, setInitialRegion] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [destination, setDestination] = useState(null);
   const [destinationText, setDestinationText] = useState("");
+  const [pickupText, setPickupText] = useState("Getting current location...");
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [routeError, setRouteError] = useState("");
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // Distance & Route Coordinates States
   const [distance, setDistance] = useState(0);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-
-  // Rider States (Populated when driver accepts)
-  const [riderLocation, setRiderLocation] = useState(null);
-  const [riderInfo, setRiderInfo] = useState(null);
 
   // UI States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -65,32 +67,61 @@ export default function HomeScreen() {
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
+
+      try {
+        const [address] = await Location.reverseGeocodeAsync(coords);
+        const pickupAddress = address
+          ? [address.name, address.street, address.district, address.city]
+              .filter((part, index, items) => part && items.indexOf(part) === index)
+              .join(", ")
+          : "";
+        setPickupText(pickupAddress || "Current Location");
+      } catch (error) {
+        setPickupText("Current Location");
+      }
     })();
   }, []);
 
-  // Fetch Mapbox road-snapped route whenever currentLocation or destination changes
+  // Request the road distance and route so the fare uses the calculated route.
   useEffect(() => {
+    let active = true;
+
     const fetchMapboxRoute = async (start, end) => {
+      if (!MAPBOX_ACCESS_TOKEN) {
+        setRouteError("Map route service is not configured. Add your Mapbox token to the .env file.");
+        setDistance(0);
+        setRouteCoordinates([]);
+        return;
+      }
+
+      setIsCalculatingRoute(true);
+      setRouteError("");
+
       try {
         const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
-        
         const response = await fetch(url);
         const data = await response.json();
-        
-        if (data.routes && data.routes.length > 0) {
-          const coords = data.routes[0].geometry.coordinates.map(coord => ({
+
+        if (!response.ok || !data.routes?.length) {
+          throw new Error(data.message || "A driving route could not be calculated.");
+        }
+
+        const route = data.routes[0];
+        if (active) {
+          setRouteCoordinates(route.geometry.coordinates.map((coord) => ({
             latitude: coord[1],
             longitude: coord[0],
-          }));
-          
-          setRouteCoordinates(coords);
-          
-          if (data.routes[0].distance) {
-            setDistance(data.routes[0].distance / 1000);
-          }
+          })));
+          setDistance(route.distance / 1000);
         }
       } catch (error) {
-        console.log("Error fetching Mapbox route:", error);
+        if (active) {
+          setRouteCoordinates([]);
+          setDistance(0);
+          setRouteError(error.message || "Unable to calculate the route.");
+        }
+      } finally {
+        if (active) setIsCalculatingRoute(false);
       }
     };
 
@@ -99,26 +130,28 @@ export default function HomeScreen() {
     } else {
       setRouteCoordinates([]);
       setDistance(0);
+      setRouteError("");
+      setIsCalculatingRoute(false);
     }
+
+    return () => {
+      active = false;
+    };
   }, [currentLocation, destination]);
 
-  // Listen for active booking updates from Driver side
+  // Restore the saved pickup and destination pins when a passenger reopens the app.
   useEffect(() => {
-    if (activeBooking && activeBooking.status !== "Waiting for driver") {
-      setRiderInfo({
-        name: "Demo Driver",
-        plateNumber: "ABC 1234",
-        vehicle: "Yamaha NMAX",
-        rating: 4.9,
-      });
-      if (currentLocation) {
-        setRiderLocation({
-          latitude: currentLocation.latitude + 0.003,
-          longitude: currentLocation.longitude + 0.003,
-        });
-      }
+    if (!activeBooking) return;
+
+    if (activeBooking.pickupCoords) {
+      setCurrentLocation(activeBooking.pickupCoords);
+      setPickupText(activeBooking.pickup || "Current Location");
     }
-  }, [activeBooking]);
+    if (activeBooking.destinationCoords) {
+      setDestination(activeBooking.destinationCoords);
+      setDestinationText(activeBooking.destination || "Selected Destination");
+    }
+  }, [activeBooking?.id]);
 
   const toggleDrawer = () => {
     if (isDrawerOpen) {
@@ -152,71 +185,124 @@ export default function HomeScreen() {
     setIsFormOpen(true);
   };
 
-  const handleMapPress = (e) => {
-    if (!activeBooking) {
-      if (isDrawerOpen) {
-        toggleDrawer();
-        return;
-      }
+  const handleMapPress = async (e) => {
+    if (activeBooking) return;
 
-      const pinnedCoords = e.nativeEvent.coordinate;
-      setDestination(pinnedCoords);
-      setDestinationText(`${pinnedCoords.latitude.toFixed(4)}, ${pinnedCoords.longitude.toFixed(4)}`);
-
-      if (!isFormOpen) {
-        setIsServiceModalOpen(true);
-      }
-    }
-  };
-
-  const handleConfirmBooking = () => {
-    if (!destination) {
-      Alert.alert("Destination Required", "Please select a destination by tapping on the map.");
+    if (isDrawerOpen) {
+      toggleDrawer();
       return;
     }
 
-    setIsFormOpen(false);
+    const pinnedCoords = e.nativeEvent.coordinate;
+    setDestination(pinnedCoords);
+    setDestinationText(`${pinnedCoords.latitude.toFixed(4)}, ${pinnedCoords.longitude.toFixed(4)}`);
 
-    // Calculate dynamic demo fare (Base ₱50 + ₱25 per km)
-    const calculatedFare = `₱${(50 + (distance * 25)).toFixed(2)}`;
+    try {
+      const [address] = await Location.reverseGeocodeAsync(pinnedCoords);
+      const readableAddress = address
+        ? [address.name, address.street, address.district, address.city]
+            .filter((part, index, items) => part && items.indexOf(part) === index)
+            .join(", ")
+        : "";
+      if (readableAddress) setDestinationText(readableAddress);
+    } catch (error) {
+      console.log("Destination reverse geocoding error:", error);
+    }
 
-    // Pushes full booking context to AuthContext so DriverHomeScreen can pick it up
-    createBooking({
+    if (!isFormOpen) setIsServiceModalOpen(true);
+  };
+
+  const estimatedFare = distance > 0 ? 50 + (distance * 25) : 0;
+
+  const handleSubmitBooking = async () => {
+    if (isSubmittingBooking) return;
+    setIsSubmittingBooking(true);
+
+    const result = await createBooking({
       passenger: currentUser?.full_name || "Passenger",
       service: selectedService || "Motorcycle",
       pickupCoords: currentLocation,
       destinationCoords: destination,
-      destinationText: destinationText,
-      pickup: "Current Location",
+      destinationText,
+      pickup: pickupText || "Current Location",
       distance: `${distance.toFixed(2)} km`,
-      fare: calculatedFare,
+      fare: `₱${estimatedFare.toFixed(2)}`,
     });
+
+    setIsSubmittingBooking(false);
+    if (!result?.success) {
+      Alert.alert("Booking Failed", result?.message || "Your ride request could not be sent. Please try again.");
+      return;
+    }
+
+    setIsFormOpen(false);
   };
 
-  const handleCancelBooking = () => {
-    clearBooking();
+  const handleConfirmBooking = () => {
+    if (!currentLocation) {
+      Alert.alert("Pickup Required", "Allow location access so Moveon can set your pickup point.");
+      return;
+    }
+    if (!destination) {
+      Alert.alert("Destination Required", "Tap the map to set your destination.");
+      return;
+    }
+    if (isCalculatingRoute) {
+      Alert.alert("Calculating Fare", "Please wait while the route and fare are being calculated.");
+      return;
+    }
+    if (routeError || distance <= 0) {
+      Alert.alert("Route Not Available", routeError || "A valid route is required before booking.");
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Your Ride",
+      `Pickup: ${pickupText}\nDestination: ${destinationText}\nDistance: ${distance.toFixed(2)} km\nEstimated fare: ₱${estimatedFare.toFixed(2)}`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Book Ride", onPress: handleSubmitBooking },
+      ]
+    );
+  };
+
+  const handleCancelBooking = async () => {
+    const result = await clearBooking();
+    if (!result?.success) {
+      Alert.alert("Unable to Cancel", result?.message || "Please try again.");
+      return;
+    }
     setDestination(null);
     setDestinationText("");
     setDistance(0);
     setRouteCoordinates([]);
-    setRiderLocation(null);
-    setRiderInfo(null);
   };
 
-  // 1. FULL-SCREEN LOADING STATE WHILE WAITING FOR DRIVER TO ACCEPT
-  if (activeBooking && activeBooking.status === "Waiting for driver") {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0284c7" />
-        <Text style={styles.loadingTitle}>Looking for nearby riders...</Text>
-        <Text style={styles.loadingSubtext}>Please wait while a driver accepts your ride request.</Text>
+  const handleSubmitRating = async () => {
+    if (!activeBooking?.id || selectedRating < 1) return;
+    setIsSubmittingRating(true);
+    const result = await submitRiderRating(activeBooking.id, selectedRating);
+    setIsSubmittingRating(false);
 
-        <TouchableOpacity style={styles.cancelButton} onPress={handleCancelBooking} activeOpacity={0.8}>
-          <Text style={styles.cancelButtonText}>Cancel Request</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+    if (!result?.success) {
+      Alert.alert("Rating Failed", result?.message || "Your rating could not be saved.");
+      return;
+    }
+
+    setIsRatingModalOpen(false);
+  };
+
+  useEffect(() => {
+    if (
+      activeBooking?.status === "Drop Off / Complete" &&
+      !activeBooking.passengerRating
+    ) {
+      setSelectedRating(0);
+      setIsRatingModalOpen(true);
+    } else {
+      setIsRatingModalOpen(false);
+    }
+  }, [activeBooking?.id, activeBooking?.status, activeBooking?.passengerRating]);
 
   return (
     <View style={styles.container}>
@@ -228,9 +314,13 @@ export default function HomeScreen() {
         initialRegion={initialRegion}
         onPress={handleMapPress}
       >
-        {/* Pickup Marker */}
-        {currentLocation && (
-          <Marker coordinate={currentLocation} title="Pickup Location" pinColor="#0284c7" />
+        {/* Passenger Pickup Marker */}
+        {(activeBooking?.pickupCoords || currentLocation) && (
+          <Marker
+            coordinate={activeBooking?.pickupCoords || currentLocation}
+            title="Pickup Location"
+            pinColor="#0284c7"
+          />
         )}
 
         {/* Destination Marker */}
@@ -238,17 +328,8 @@ export default function HomeScreen() {
           <Marker coordinate={destination} title="Destination" pinColor="#ef4444" />
         )}
 
-        {/* Rider Location Marker when Driver Accepts */}
-        {activeBooking && activeBooking.status !== "Waiting for driver" && riderLocation && (
-          <Marker coordinate={riderLocation} title={`Rider: ${riderInfo?.name}`}>
-            <View style={styles.riderMarker}>
-              <Ionicons name="bicycle" size={24} color="#ffffff" />
-            </View>
-          </Marker>
-        )}
-
-        {/* Mapbox Road-Snapping Polyline Route */}
-        {routeCoordinates.length > 0 && !activeBooking && (
+        {/* Calculated road route to the passenger destination */}
+        {routeCoordinates.length > 0 && (
           <Polyline
             coordinates={routeCoordinates}
             strokeWidth={4}
@@ -256,19 +337,16 @@ export default function HomeScreen() {
           />
         )}
 
-        {/* Polyline from Rider to Pickup when Accepted */}
-        {activeBooking && activeBooking.status !== "Waiting for driver" && riderLocation && currentLocation && (
-          <Polyline
-            coordinates={[riderLocation, currentLocation]}
-            strokeWidth={4}
-            strokeColor="#10b981"
-          />
-        )}
       </MapView>
 
-      {/* Menu Button */}
-      {!activeBooking && (
-        <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer} activeOpacity={0.8}>
+      {/* Keep passenger drawer available during an active booking. */}
+      {!isRatingModalOpen && (
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={toggleDrawer}
+          activeOpacity={0.8}
+          accessibilityLabel="Open passenger menu"
+        >
           <Ionicons name="menu" size={24} color="#000" />
         </TouchableOpacity>
       )}
@@ -289,33 +367,75 @@ export default function HomeScreen() {
             <Logo size={55} />
           </View>
           <TouchableOpacity style={styles.profileNameRow} activeOpacity={0.7}>
-            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
+            <View>
+              <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
+              {!!currentUser?.email && <Text style={styles.profileEmail}>{currentUser.email}</Text>}
+              {!!currentUser?.phone && <Text style={styles.profileEmail}>{currentUser.phone}</Text>}
+            </View>
             <Ionicons name="chevron-forward" size={18} color="#0f172a" style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
 
         <View style={styles.drawerContent}>
-          <TouchableOpacity style={styles.drawerItem} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/historyPassenger")}
+          >
             <Ionicons name="document-text-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>History</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.drawerItem} activeOpacity={0.7}>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/savedplacesPassenger")}
+          >
             <Ionicons name="bookmark-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Saved Places</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/inboxPassenger")}
+          >
+            <Ionicons name="mail-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Inbox</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/paymentPassenger")}
+          >
+            <Ionicons name="card-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Payment Methods</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/supportPassenger")}
+          >
+            <Ionicons name="help-circle-outline" size={22} color="#0f172a" />
+            <Text style={styles.drawerItemText}>Help & Support</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.drawerLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-          <Text style={styles.drawerLogoutText}>Log Out</Text>
-        </TouchableOpacity>
+        {!activeBooking && (
+          <TouchableOpacity style={styles.drawerLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Ionicons name="log-out-outline" size={22} color="#ef4444" />
+            <Text style={styles.drawerLogoutText}>Log Out</Text>
+          </TouchableOpacity>
+        )}
       </Animated.View>
 
       {/* Service Selection Sheet */}
       {isServiceModalOpen && (
         <View style={styles.expandedContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Hi! Naka move-on kana ba?</Text>
+            <Text style={styles.modalTitle}>Book a Ride</Text>
             <TouchableOpacity onPress={() => setIsServiceModalOpen(false)}>
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
@@ -348,31 +468,45 @@ export default function HomeScreen() {
 
           <View style={styles.inputContainer}>
             <Ionicons name="location" size={20} color="#0284c7" style={styles.inputIcon} />
-            <Text style={styles.readOnlyInput}>Current Location (Pickup)</Text>
+            <View style={styles.locationTextContainer}>
+              <Text style={styles.locationLabel}>Pickup Location</Text>
+              <Text style={styles.readOnlyInput}>{pickupText}</Text>
+            </View>
           </View>
 
           <View style={styles.inputContainer}>
             <Ionicons name="pin" size={20} color="#ef4444" style={styles.inputIcon} />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Tap map or enter destination"
-              value={destinationText}
-              onChangeText={setDestinationText}
-            />
+            <View style={styles.locationTextContainer}>
+              <Text style={styles.locationLabel}>Destination</Text>
+              <Text style={styles.readOnlyInput}>{destinationText || "Tap the map to choose a destination"}</Text>
+            </View>
           </View>
 
           <Text style={styles.mapHintText}>
-            {destination 
-              ? `Estimated distance: ${distance.toFixed(2)} km (Tap map to adjust pin)` 
-              : "💡 Tap anywhere on the map to place your destination pin."}
+            {isCalculatingRoute
+              ? "Calculating route and fare..."
+              : routeError
+                ? routeError
+                : destination
+                  ? `Route distance: ${distance.toFixed(2)} km`
+                  : "Tap anywhere on the map to set your destination."}
           </Text>
 
-          <TouchableOpacity 
-            style={styles.confirmBookButton} 
-            onPress={handleConfirmBooking} 
+          <View style={styles.farePreview}>
+            <Text style={styles.farePreviewLabel}>Estimated Fare</Text>
+            <Text style={styles.farePreviewAmount}>
+              {distance > 0 && !routeError ? `₱${estimatedFare.toFixed(2)}` : "—"}
+            </Text>
+            <Text style={styles.farePreviewNote}>₱50 base fare + ₱25 per calculated kilometer</Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.confirmBookButton}
+            onPress={handleConfirmBooking}
             activeOpacity={0.8}
+            disabled={isCalculatingRoute || !!routeError || distance <= 0 || isSubmittingBooking}
           >
-            <Text style={styles.confirmBookText}>Confirm Ride Request</Text>
+            <Text style={styles.confirmBookText}>Review and Confirm Booking</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -388,43 +522,142 @@ export default function HomeScreen() {
             <Text style={styles.serviceText}>🛵 Choose Service ›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.bookButton} 
-            onPress={handleLogout} 
+          <TouchableOpacity
+            style={styles.bookButton}
+            onPress={() => setIsServiceModalOpen(true)}
             activeOpacity={0.8}
           >
-            <Text style={styles.bookText}>Book / Log Out</Text>
+            <Text style={styles.bookText}>Book a Ride</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* 3. RIDER ACCEPTED BOTTOM CARD */}
-      {activeBooking && activeBooking.status !== "Waiting for driver" && riderInfo && (
+      {/* Live booking status and registered driver information */}
+      {activeBooking && activeBooking.status !== "Drop Off / Complete" && (
         <View style={styles.riderCardContainer}>
-          <Text style={styles.riderStatusHeader}>Status: {activeBooking.status}</Text>
-          <View style={styles.riderInfoRow}>
-            <View style={styles.riderAvatar}>
-              <Ionicons name="person" size={28} color="#0284c7" />
+          <Text style={styles.riderStatusHeader}>
+            {activeBooking.status === "Waiting for driver"
+              ? "Finding your rider..."
+              : activeBooking.status === "Proceed to Pick Up"
+                ? "Your rider is on the way"
+                : activeBooking.status === "Arrived at Pick Up"
+                  ? "Your rider has arrived"
+                  : "Passenger picked up"}
+          </Text>
+          {activeBooking.status === "Arrived at Pick Up" && (
+            <Text style={styles.bookingHelpText}>
+              Your driver is waiting at the pickup point. Meet your driver; the destination route will appear after the driver confirms pickup.
+            </Text>
+          )}
+
+          <View style={styles.fareRow}>
+            <View>
+              <Text style={styles.smallLabel}>Pickup</Text>
+              <Text style={styles.bookingValue}>{activeBooking.pickup}</Text>
             </View>
-            <View style={styles.riderDetails}>
-              <Text style={styles.riderName}>{riderInfo.name}</Text>
-              <Text style={styles.riderSubtext}>{riderInfo.vehicle} • {riderInfo.plateNumber}</Text>
-              <Text style={styles.riderRating}>★ {riderInfo.rating}</Text>
-            </View>
-            <TouchableOpacity style={styles.callButton} activeOpacity={0.8}>
-              <Ionicons name="call" size={20} color="#ffffff" />
-            </TouchableOpacity>
+            <Text style={styles.bookingFare}>{activeBooking.fare}</Text>
+          </View>
+          <View style={styles.bookingDestination}>
+            <Text style={styles.smallLabel}>Destination</Text>
+            <Text style={styles.bookingValue}>{activeBooking.destination}</Text>
+            <Text style={styles.distanceText}>{activeBooking.distance}</Text>
           </View>
 
-          <TouchableOpacity 
-            style={styles.cancelRideButton} 
-            onPress={handleCancelBooking} 
-            activeOpacity={0.8}
-          >
-            <Text style={styles.cancelRideText}>Cancel Ride</Text>
+          {activeBooking.status !== "Waiting for driver" && (
+            <View style={styles.riderInfoRow}>
+              <View style={styles.riderAvatar}>
+                <Ionicons name="person" size={28} color="#0284c7" />
+              </View>
+              <View style={styles.riderDetails}>
+                <Text style={styles.riderName}>
+                  {activeBooking.driverDetails?.name || "Loading driver details..."}
+                </Text>
+                <Text style={styles.riderSubtext}>
+                  {activeBooking.driverDetails?.vehicleType || "Vehicle details loading"}
+                  {" • "}
+                  {activeBooking.driverDetails?.plateNumber || "Plate not provided"}
+                </Text>
+                {!!activeBooking.driverDetails?.phone && (
+                  <Text style={styles.riderSubtext}>Contact: {activeBooking.driverDetails.phone}</Text>
+                )}
+                <View style={styles.ratingRow}>
+                  {Array.from({ length: 5 }, (_, index) => (
+                    <Ionicons
+                      key={index}
+                      name={Math.round(activeBooking.driverDetails?.averageRating || 0) >= index + 1 ? "star" : "star-outline"}
+                      size={14}
+                      color="#f59e0b"
+                    />
+                  ))}
+                  <Text style={styles.riderRating}>
+                    {activeBooking.driverDetails?.ratingCount
+                      ? `${activeBooking.driverDetails.averageRating.toFixed(1)} (${activeBooking.driverDetails.ratingCount})`
+                      : "No ratings yet"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {activeBooking.status === "Waiting for driver" && (
+            <TouchableOpacity
+              style={styles.cancelRideButton}
+              onPress={handleCancelBooking}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.cancelRideText}>Cancel Request</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {activeBooking?.status === "Drop Off / Complete" && activeBooking.passengerRating && (
+        <View style={styles.riderCardContainer}>
+          <Text style={styles.riderStatusHeader}>Ride completed</Text>
+          <Text style={styles.bookingValue}>You rated your rider {activeBooking.passengerRating} out of 5.</Text>
+          <TouchableOpacity style={styles.cancelRideButton} onPress={handleCancelBooking}>
+            <Text style={styles.cancelRideText}>Done</Text>
           </TouchableOpacity>
         </View>
       )}
+
+      <Modal
+        visible={isRatingModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {}}
+      >
+        <View style={styles.ratingModalOverlay}>
+          <View style={styles.ratingModalCard}>
+            <Ionicons name="checkmark-circle" size={42} color="#10b981" />
+            <Text style={styles.ratingModalTitle}>Ride Completed!</Text>
+            <Text style={styles.ratingModalText}>How was your driver?</Text>
+            <View style={styles.ratingStars}>
+              {Array.from({ length: 5 }, (_, index) => (
+                <TouchableOpacity key={index} onPress={() => setSelectedRating(index + 1)}>
+                  <Ionicons
+                    name={selectedRating >= index + 1 ? "star" : "star-outline"}
+                    size={34}
+                    color="#f59e0b"
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.ratingModalText}>
+              {selectedRating ? `${selectedRating} out of 5 stars` : "Tap a star to rate your driver"}
+            </Text>
+            <TouchableOpacity
+              style={[styles.confirmBookButton, selectedRating === 0 && styles.disabledButton]}
+              onPress={handleSubmitRating}
+              disabled={selectedRating === 0 || isSubmittingRating}
+            >
+              <Text style={styles.confirmBookText}>
+                {isSubmittingRating ? "Saving..." : "Submit Rating"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -457,7 +690,27 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
     elevation: 15,
   },
-  riderStatusHeader: { fontSize: 18, fontWeight: 'bold', color: '#10b981', marginBottom: 16 },
+  riderStatusHeader: { fontSize: 18, fontWeight: 'bold', color: '#10b981', marginBottom: 12 },
+  bookingHelpText: { color: '#64748b', fontSize: 12, lineHeight: 17, marginBottom: 10 },
+  fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  smallLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
+  bookingValue: { color: '#0f172a', fontSize: 13, fontWeight: '600', marginTop: 3 },
+  bookingFare: { color: '#0284c7', fontSize: 20, fontWeight: 'bold' },
+  bookingDestination: { borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 8, marginBottom: 10 },
+  distanceText: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
+  locationTextContainer: { flex: 1 },
+  locationLabel: { fontSize: 11, color: '#64748b', marginBottom: 2 },
+  farePreview: { backgroundColor: '#f0f9ff', borderRadius: 12, padding: 14, marginBottom: 14 },
+  farePreviewLabel: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  farePreviewAmount: { color: '#0284c7', fontSize: 24, fontWeight: 'bold', marginTop: 3 },
+  farePreviewNote: { color: '#64748b', fontSize: 10, marginTop: 3 },
+  ratingModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  ratingModalCard: { width: '100%', maxWidth: 340, backgroundColor: '#ffffff', borderRadius: 20, padding: 24, alignItems: 'center', gap: 12 },
+  ratingModalTitle: { color: '#0f172a', fontSize: 21, fontWeight: 'bold' },
+  ratingModalText: { color: '#64748b', fontSize: 13, textAlign: 'center' },
+  ratingStars: { flexDirection: 'row', gap: 10, marginVertical: 8 },
+  disabledButton: { opacity: 0.45 },
   riderInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   riderAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
   riderDetails: { flex: 1, marginLeft: 14 },
@@ -474,6 +727,7 @@ const styles = StyleSheet.create({
   avatarContainer: { width: 75, height: 75, borderRadius: 37.5, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   profileNameRow: { flexDirection: 'row', alignItems: 'center' },
   profileName: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
+  profileEmail: { fontSize: 12, color: '#475569', marginTop: 3 },
   drawerContent: { flex: 1, paddingTop: 10, paddingHorizontal: 16 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 },
   drawerItemText: { fontSize: 16, fontWeight: '500', color: '#0f172a', marginLeft: 16 },
