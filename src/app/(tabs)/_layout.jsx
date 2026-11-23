@@ -42,6 +42,10 @@ export default function TabLayout() {
           }}
         />
       )}
+      <Tabs.Screen name="driverHome" options={{ href: isDriver ? undefined : null }} />
+      <Tabs.Screen name="rideHistory" options={{ href: isDriver ? undefined : null }} />
+      <Tabs.Screen name="passengerHome" options={{ href: isDriver ? null : undefined }} />
+
       <Tabs.Screen
         name="details"
         options={{
