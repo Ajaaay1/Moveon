@@ -191,12 +191,18 @@ export const AuthProvider = ({ children }) => {
           });
         }
       } else if (currentUser.role === "driver") {
-        const { data: waiting, error: waitingError } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("status", "searching")
-          .order("created_at", { ascending: false })
-          .limit(10);
+        const driverIsOnline = currentUser?.driverProfile?.is_online === true;
+        if (!driverIsOnline) {
+          setIncomingBookings([]);
+        }
+        const { data: waiting, error: waitingError } = driverIsOnline
+          ? await supabase
+              .from("bookings")
+              .select("*")
+              .eq("status", "searching")
+              .order("created_at", { ascending: false })
+              .limit(10)
+          : { data: [], error: null };
 
         if (waitingError) {
           console.warn("Incoming bookings load error:", waitingError.message);
@@ -214,7 +220,7 @@ export const AuthProvider = ({ children }) => {
 
         if (assignedError) console.warn("Assigned booking load error:", assignedError.message);
         if (alive) {
-          setIncomingBookings((waiting || []).map(mapBooking));
+          setIncomingBookings(driverIsOnline ? (waiting || []).map(mapBooking) : []);
           setActiveBooking(assigned ? mapBooking(assigned) : null);
         }
       }
@@ -420,6 +426,34 @@ export const AuthProvider = ({ children }) => {
       : { success: true, message: "Password reset email sent." };
   };
 
+  const updateDriverSettings = async (changes) => {
+    if (!session?.user?.id || currentUser?.role !== "driver") {
+      return { success: false, message: "Only logged-in drivers can change availability." };
+    }
+
+    const update = {};
+    if (typeof changes.is_online === "boolean") update.is_online = changes.is_online;
+    if (typeof changes.auto_accept === "boolean") update.auto_accept = changes.auto_accept;
+    if (!Object.keys(update).length) return { success: false, message: "No settings to update." };
+
+    const { error } = await supabase
+      .from("driver_profiles")
+      .update(update)
+      .eq("user_id", session.user.id);
+
+    if (error) return { success: false, message: error.message };
+
+    const { data, error: loadError } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (loadError) return { success: false, message: loadError.message };
+    setCurrentUser((old) => old ? { ...old, driverProfile: data } : old);
+    return { success: true, driverProfile: data };
+  };
+
   const createBooking = async (booking) => {
     if (!session?.user?.id) return { success: false, message: "Please log in again." };
 
@@ -573,6 +607,7 @@ export const AuthProvider = ({ children }) => {
       activeBooking,
       incomingBookings,
       createBooking,
+      updateDriverSettings,
       acceptBooking,
       updateBookingStatus,
       clearBooking,
