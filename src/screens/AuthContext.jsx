@@ -413,6 +413,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logoutUser = async () => {
+    if (session?.user?.id && currentUser?.role === "driver") {
+      await supabase
+        .from("driver_profiles")
+        .update({ is_online: false })
+        .eq("user_id", session.user.id);
+    }
     const { error } = await supabase.auth.signOut();
     if (error) return { success: false, message: error.message };
     setCurrentUser(null);
