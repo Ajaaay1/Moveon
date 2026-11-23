@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../../screens/AuthContext";
+import { AuthContext } from "./AuthContext";
 import { supabase } from "../../lib/supabase";
 
 export default function RideHistoryScreen() {
