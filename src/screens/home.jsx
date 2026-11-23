@@ -18,6 +18,18 @@ import { AuthContext } from "./AuthContext";
 
 const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
 
+const getEstimatedRoadDistanceKm = (start, end) => {
+  const toRadians = (degrees) => degrees * Math.PI / 180;
+  const lat1 = toRadians(start.latitude);
+  const lat2 = toRadians(end.latitude);
+  const deltaLat = toRadians(end.latitude - start.latitude);
+  const deltaLng = toRadians(end.longitude - start.longitude);
+  const a = Math.sin(deltaLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+  const straightLineKm = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return straightLineKm * 1.3;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   
@@ -32,6 +44,7 @@ export default function HomeScreen() {
   const [pickupText, setPickupText] = useState("Getting current location...");
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
   const [routeError, setRouteError] = useState("");
+  const [routeNotice, setRouteNotice] = useState("");
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedRating, setSelectedRating] = useState(0);
@@ -89,14 +102,16 @@ export default function HomeScreen() {
 
     const fetchMapboxRoute = async (start, end) => {
       if (!MAPBOX_ACCESS_TOKEN) {
-        setRouteError("Map route service is not configured. Add your Mapbox token to the .env file.");
-        setDistance(0);
-        setRouteCoordinates([]);
+        setRouteError("");
+        setRouteNotice("Mapbox is unavailable. Fare uses an approximate road-distance estimate.");
+        setDistance(getEstimatedRoadDistanceKm(start, end));
+        setRouteCoordinates([start, end]);
         return;
       }
 
       setIsCalculatingRoute(true);
       setRouteError("");
+      setRouteNotice("");
 
       try {
         const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start.longitude},${start.latitude};${end.longitude},${end.latitude}?geometries=geojson&access_token=${MAPBOX_ACCESS_TOKEN}`;
@@ -117,9 +132,11 @@ export default function HomeScreen() {
         }
       } catch (error) {
         if (active) {
-          setRouteCoordinates([]);
-          setDistance(0);
-          setRouteError(error.message || "Unable to calculate the route.");
+          const estimatedDistance = getEstimatedRoadDistanceKm(start, end);
+          setRouteCoordinates([start, end]);
+          setDistance(estimatedDistance);
+          setRouteError("");
+          setRouteNotice("Mapbox route unavailable. Showing an approximate fare based on estimated road distance.");
         }
       } finally {
         if (active) setIsCalculatingRoute(false);
@@ -132,6 +149,7 @@ export default function HomeScreen() {
       setRouteCoordinates([]);
       setDistance(0);
       setRouteError("");
+      setRouteNotice("");
       setIsCalculatingRoute(false);
     }
 
@@ -496,9 +514,11 @@ export default function HomeScreen() {
               ? "Calculating route and fare..."
               : routeError
                 ? routeError
-                : destination
-                  ? `Route distance: ${distance.toFixed(2)} km`
-                  : "Tap anywhere on the map to set your destination."}
+                : routeNotice
+                  ? routeNotice
+                  : destination
+                    ? `Route distance: ${distance.toFixed(2)} km`
+                    : "Tap anywhere on the map to set your destination."}
           </Text>
 
           <View style={styles.farePreview}>
@@ -506,7 +526,7 @@ export default function HomeScreen() {
             <Text style={styles.farePreviewAmount}>
               {distance > 0 && !routeError ? `₱${estimatedFare.toFixed(2)}` : "—"}
             </Text>
-            <Text style={styles.farePreviewNote}>₱50 base fare + ₱25 per calculated kilometer</Text>
+            <Text style={styles.farePreviewNote}>₱50 base fare + ₱25 per estimated kilometer. Final distance may vary when Mapbox is unavailable.</Text>
           </View>
 
           <TouchableOpacity
