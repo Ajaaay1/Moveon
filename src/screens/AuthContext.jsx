@@ -245,7 +245,7 @@ export const AuthProvider = ({ children }) => {
       alive = false;
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, currentUser?.role]);
+  }, [session?.user?.id, currentUser?.role, currentUser?.driverProfile?.is_online]);
 
   const registerUser = async (newUser) => {
     const fullName = newUser.fullName ||
@@ -481,6 +481,9 @@ export const AuthProvider = ({ children }) => {
 
   const acceptBooking = async (bookingId) => {
     if (!session?.user?.id) return { success: false, message: "Please log in again." };
+    if (currentUser?.role !== "driver" || currentUser?.driverProfile?.is_online !== true) {
+      return { success: false, message: "Go online before accepting a ride." };
+    }
 
     const { data, error } = await supabase
       .from("bookings")
