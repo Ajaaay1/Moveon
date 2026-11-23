@@ -13,10 +13,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: "#0284c7",
         tabBarInactiveTintColor: "#94a3b8",
-        tabBarStyle: {
-          backgroundColor: "#ffffff",
-          borderTopColor: "#e2e8f0",
-        },
+        tabBarStyle: { backgroundColor: "#ffffff", borderTopColor: "#e2e8f0" },
       }}
     >
       {isDriver ? (
@@ -38,14 +35,13 @@ export default function TabLayout() {
         </>
       ) : (
         <Tabs.Screen
-          name="home"
+          name="passengerHome"
           options={{
             title: "Home",
             tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={size} color={color} />,
           }}
         />
       )}
-
       <Tabs.Screen
         name="details"
         options={{
