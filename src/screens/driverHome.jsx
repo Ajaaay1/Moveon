@@ -18,11 +18,6 @@ const STATUS_STEPS = [
   "Drop Off / Complete",
 ];
 
-const DEMO_HISTORY = [
-  { id: "H-01", passenger: "Ana Reyes", route: "Bajada → UM", fare: "₱95" },
-  { id: "H-02", passenger: "John Cruz", route: "Centrio → Airport", fare: "₱180" },
-];
-
 export default function DriverHomeScreen() {
   const router = useRouter();
   const { currentUser, activeBooking, incomingBookings, acceptBooking, updateBookingStatus, logoutUser } = useContext(AuthContext);
@@ -249,18 +244,6 @@ export default function DriverHomeScreen() {
             <Text style={styles.drawerSubtitle}>Demo balance only</Text>
           </View>
 
-          <View style={styles.drawerSection}>
-            <Text style={styles.drawerTitle}>Recent Job History</Text>
-            {DEMO_HISTORY.map((item) => (
-              <View key={item.id} style={styles.historyRow}>
-                <View style={styles.settingText}>
-                  <Text style={styles.settingName}>{item.passenger}</Text>
-                  <Text style={styles.drawerSubtitle}>{item.route}</Text>
-                </View>
-                <Text style={styles.historyFare}>{item.fare}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
