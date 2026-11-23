@@ -295,6 +295,89 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (changes) => {
+    if (!session?.user?.id || !currentUser) {
+      return { success: false, message: "Please log in again." };
+    }
+
+    const userId = session.user.id;
+    const fullName = changes.full_name?.trim();
+
+    if (!fullName) {
+      return { success: false, message: "Full name is required." };
+    }
+
+    let avatarUrl = currentUser.avatar_url || null;
+
+    if (changes.avatarUri) {
+      try {
+        const fileResponse = await fetch(changes.avatarUri);
+        const imageBlob = await fileResponse.blob();
+        const extension = (changes.avatarUri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
+        const mimeType = extension === "png"
+          ? "image/png"
+          : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg";
+        const filePath = userId + "/" + Date.now() + "." + (extension === "jpeg" ? "jpg" : extension);
+
+        const { error: uploadError } = await supabase.storage
+          .from("profile-avatars")
+          .upload(filePath, imageBlob, {
+            contentType: mimeType,
+            cacheControl: "3600",
+            upsert: false,
+          });
+
+        if (uploadError) return { success: false, message: uploadError.message };
+
+        const { data: publicImage } = supabase.storage
+          .from("profile-avatars")
+          .getPublicUrl(filePath);
+        avatarUrl = publicImage.publicUrl;
+      } catch (uploadError) {
+        return { success: false, message: "Could not upload profile picture: " + uploadError.message };
+      }
+    }
+
+    if (currentUser.role === "driver") {
+      const driverChanges = {
+        license_id: changes.license_id?.trim() || null,
+        vehicle_type: changes.vehicle_type?.trim() || "",
+        plate_number: changes.plate_number?.trim().toUpperCase() || "",
+      };
+
+      if (!driverChanges.license_id || !driverChanges.vehicle_type || !driverChanges.plate_number) {
+        return { success: false, message: "License ID, vehicle type, and plate number are required for driver accounts." };
+      }
+
+      const { error: driverError } = await supabase
+        .from("driver_profiles")
+        .update(driverChanges)
+        .eq("user_id", userId);
+
+      if (driverError) return { success: false, message: driverError.message };
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName,
+        phone: changes.phone?.trim() || null,
+        avatar_url: avatarUrl,
+      })
+      .eq("id", userId);
+
+    if (profileError) return { success: false, message: profileError.message };
+
+    try {
+      const updatedUser = await loadProfile(session.user);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  };
+
   const loginUser = async (identifier, password, role) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: identifier.trim().toLowerCase(),
@@ -484,6 +567,7 @@ export const AuthProvider = ({ children }) => {
       authLoading,
       registerUser,
       loginUser,
+      updateProfile,
       logoutUser,
       resetPassword,
       activeBooking,

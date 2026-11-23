@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  Alert, Animated, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -16,11 +16,6 @@ const STATUS_STEPS = [
   "Arrived at Pick Up",
   "Passenger Picked Up",
   "Drop Off / Complete",
-];
-
-const DEMO_HISTORY = [
-  { id: "H-01", passenger: "Ana Reyes", route: "Bajada → UM", fare: "₱95" },
-  { id: "H-02", passenger: "John Cruz", route: "Centrio → Airport", fare: "₱180" },
 ];
 
 export default function DriverHomeScreen() {
@@ -191,10 +186,16 @@ export default function DriverHomeScreen() {
       <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Logo size={55} />
+            {currentUser?.avatar_url ? (
+              <Image source={{ uri: currentUser.avatar_url }} style={styles.profileAvatarImage} />
+            ) : (
+              <Logo size={55} />
+            )}
           </View>
-          <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
-          <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"}</Text>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/details")} activeOpacity={0.7}>
+            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
+            <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.drawerContent}>
@@ -249,18 +250,6 @@ export default function DriverHomeScreen() {
             <Text style={styles.drawerSubtitle}>Demo balance only</Text>
           </View>
 
-          <View style={styles.drawerSection}>
-            <Text style={styles.drawerTitle}>Recent Job History</Text>
-            {DEMO_HISTORY.map((item) => (
-              <View key={item.id} style={styles.historyRow}>
-                <View style={styles.settingText}>
-                  <Text style={styles.settingName}>{item.passenger}</Text>
-                  <Text style={styles.drawerSubtitle}>{item.route}</Text>
-                </View>
-                <Text style={styles.historyFare}>{item.fare}</Text>
-              </View>
-            ))}
-          </View>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -346,6 +335,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   profileHeader: { backgroundColor: "#e0f2fe", paddingTop: 55, paddingHorizontal: 20, paddingBottom: 20 },
+  profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
   avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center", marginBottom: 12 },
   profileName: { color: "#0f172a", fontSize: 18, fontWeight: "bold" },
   profileCaption: { color: "#64748b", fontSize: 12, marginTop: 3 },

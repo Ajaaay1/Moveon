@@ -34,7 +34,7 @@ export default function LoginScreen() {
     Alert.alert("Log in Successfully!", `Welcome back, ${result.user.name}!`, [
       {
         text: "OK",
-        onPress: () => router.replace("/home"),
+        onPress: () => router.replace("/(tabs)/passengerHome"),
       },
     ]);
   };
