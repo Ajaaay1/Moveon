@@ -295,6 +295,54 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (changes) => {
+    if (!session?.user?.id || !currentUser) {
+      return { success: false, message: "Please log in again." };
+    }
+
+    const profileChanges = {
+      full_name: changes.full_name?.trim(),
+      phone: changes.phone?.trim() || null,
+    };
+
+    if (!profileChanges.full_name) {
+      return { success: false, message: "Full name is required." };
+    }
+
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update(profileChanges)
+      .eq("id", session.user.id);
+
+    if (profileError) return { success: false, message: profileError.message };
+
+    if (currentUser.role === "driver") {
+      const driverChanges = {
+        license_id: changes.license_id?.trim() || null,
+        vehicle_type: changes.vehicle_type?.trim() || null,
+        plate_number: changes.plate_number?.trim().toUpperCase() || "",
+      };
+
+      if (!driverChanges.license_id || !driverChanges.vehicle_type || !driverChanges.plate_number) {
+        return { success: false, message: "License ID, vehicle type, and plate number are required for driver accounts." };
+      }
+
+      const { error: driverError } = await supabase
+        .from("driver_profiles")
+        .update(driverChanges)
+        .eq("user_id", session.user.id);
+
+      if (driverError) return { success: false, message: driverError.message };
+    }
+
+    try {
+      const updatedUser = await loadProfile(session.user);
+      return { success: true, user: updatedUser };
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  };
+
   const loginUser = async (identifier, password, role) => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: identifier.trim().toLowerCase(),
@@ -484,6 +532,7 @@ export const AuthProvider = ({ children }) => {
       authLoading,
       registerUser,
       loginUser,
+      updateProfile,
       logoutUser,
       resetPassword,
       activeBooking,
