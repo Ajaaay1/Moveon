@@ -188,8 +188,10 @@ export default function DriverHomeScreen() {
           <View style={styles.avatar}>
             <Logo size={55} />
           </View>
-          <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
-          <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"}</Text>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/details")} activeOpacity={0.7}>
+            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
+            <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Edit Profile</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.drawerContent}>
