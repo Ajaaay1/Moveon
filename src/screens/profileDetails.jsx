@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { AuthContext } from "../../screens/AuthContext";
+import { AuthContext } from "./AuthContext";
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();
