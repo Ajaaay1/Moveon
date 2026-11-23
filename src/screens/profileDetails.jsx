@@ -121,7 +121,7 @@ export default function ProfileDetailsScreen() {
           onPress={isEditing ? cancelEditing : () => setIsEditing(true)}
           disabled={saving}
         >
-          <Text style={styles.headerActionText}>{isEditing ? "Cancel" : "Edit"}</Text>
+          <Text style={styles.headerActionText}>{isEditing ? "Cancel" : "Edit Profile"}</Text>
         </TouchableOpacity>
       </View>
 
