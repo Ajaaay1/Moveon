@@ -5,8 +5,15 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  console.warn("Supabase environment variables are missing. Add them to your .env file.");
+const missingSupabaseEnv = [];
+if (!supabaseUrl) missingSupabaseEnv.push("EXPO_PUBLIC_SUPABASE_URL");
+if (!supabaseKey) missingSupabaseEnv.push("EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+
+if (missingSupabaseEnv.length) {
+  console.error(
+    "Missing Expo environment variables: " + missingSupabaseEnv.join(", ") +
+    ". Check the exact spelling in the project-root .env file, then restart Expo with npx expo start -c."
+  );
 }
 
 export const supabase = createClient(
