@@ -20,10 +20,36 @@ const STATUS_STEPS = [
 
 export default function DriverHomeScreen() {
   const router = useRouter();
-  const { currentUser, activeBooking, incomingBookings, acceptBooking, updateBookingStatus, logoutUser } = useContext(AuthContext);
+  const {
+    currentUser, activeBooking, incomingBookings, acceptBooking,
+    updateBookingStatus, updateDriverSettings, logoutUser,
+  } = useContext(AuthContext);
 
-  const [isOnline, setIsOnline] = useState(false);
-  const [autoAccept, setAutoAccept] = useState(false);
+  const [isOnline, setIsOnline] = useState(currentUser?.driverProfile?.is_online === true);
+  const [autoAccept, setAutoAccept] = useState(currentUser?.driverProfile?.auto_accept === true);
+  const [savingDriverSettings, setSavingDriverSettings] = useState(false);
+
+  useEffect(() => {
+    setIsOnline(currentUser?.driverProfile?.is_online === true);
+    setAutoAccept(currentUser?.driverProfile?.auto_accept === true);
+  }, [currentUser?.driverProfile?.is_online, currentUser?.driverProfile?.auto_accept]);
+
+  const handleDriverSettingChange = async (changes) => {
+    setSavingDriverSettings(true);
+    const result = await updateDriverSettings(changes);
+    setSavingDriverSettings(false);
+    if (!result.success) {
+      Alert.alert("Settings not saved", result.message || "Please try again.");
+      return;
+    }
+    if (typeof changes.is_online === "boolean") setIsOnline(changes.is_online);
+    if (typeof changes.auto_accept === "boolean") setAutoAccept(changes.auto_accept);
+  };
+
+  useEffect(() => {
+    if (!isOnline || !autoAccept || activeBooking || !incomingBookings?.length) return;
+    handleAcceptBooking(incomingBookings[0].id);
+  }, [isOnline, autoAccept, activeBooking?.id, incomingBookings?.[0]?.id]);
   const [targetEnabled, setTargetEnabled] = useState(false);
   const [targetDestination, setTargetDestination] = useState("SM City Cagayan de Oro");
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
@@ -213,7 +239,7 @@ export default function DriverHomeScreen() {
                 <Text style={styles.drawerTitle}>Driver Status</Text>
                 <Text style={styles.drawerSubtitle}>{isOnline ? "You are online" : "You are offline"}</Text>
               </View>
-              <Switch value={isOnline} onValueChange={setIsOnline} />
+              <Switch value={isOnline} disabled={savingDriverSettings || !!activeBooking} onValueChange={(value) => handleDriverSettingChange({ is_online: value })} />
             </View>
           </View>
 
@@ -222,9 +248,9 @@ export default function DriverHomeScreen() {
             <View style={styles.drawerRow}>
               <View style={styles.settingText}>
                 <Text style={styles.settingName}>Auto-Accept Requests</Text>
-                <Text style={styles.drawerSubtitle}>Demo preference only</Text>
+                <Text style={styles.drawerSubtitle}>Automatically accept the first available request</Text>
               </View>
-              <Switch value={autoAccept} onValueChange={setAutoAccept} />
+              <Switch value={autoAccept} disabled={savingDriverSettings} onValueChange={(value) => handleDriverSettingChange({ auto_accept: value })} />
             </View>
             <View style={styles.drawerRow}>
               <View style={styles.settingText}>
