@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import { 
   StyleSheet, 
-  Text, 
+  Text,
+  Image, 
   TouchableOpacity, 
   View, 
   Alert, 
@@ -364,7 +365,11 @@ export default function HomeScreen() {
       <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <View style={styles.profileHeader}>
           <View style={styles.avatarContainer}>
-            <Logo size={55} />
+            {currentUser?.avatar_url ? (
+              <Image source={{ uri: currentUser.avatar_url }} style={styles.profileAvatarImage} />
+            ) : (
+              <Logo size={55} />
+            )}
           </View>
           <TouchableOpacity
             style={styles.profileNameRow}
@@ -728,6 +733,7 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 15 },
   drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 300, backgroundColor: '#ffffff', zIndex: 20, elevation: 20 },
   profileHeader: { backgroundColor: '#e0f2fe', paddingTop: 60, paddingHorizontal: 20, paddingBottom: 24 },
+  profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
   avatarContainer: { width: 75, height: 75, borderRadius: 37.5, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   profileNameRow: { flexDirection: 'row', alignItems: 'center' },
   profileName: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
