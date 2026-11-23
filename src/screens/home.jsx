@@ -366,7 +366,11 @@ export default function HomeScreen() {
           <View style={styles.avatarContainer}>
             <Logo size={55} />
           </View>
-          <TouchableOpacity style={styles.profileNameRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.profileNameRow}
+            activeOpacity={0.7}
+            onPress={() => router.push("/(tabs)/details")}
+          >
             <View>
               <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
               {!!currentUser?.email && <Text style={styles.profileEmail}>{currentUser.email}</Text>}
