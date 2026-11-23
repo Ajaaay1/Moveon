@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  Alert, Animated, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -186,7 +186,11 @@ export default function DriverHomeScreen() {
       <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
         <View style={styles.profileHeader}>
           <View style={styles.avatar}>
-            <Logo size={55} />
+            {currentUser?.avatar_url ? (
+              <Image source={{ uri: currentUser.avatar_url }} style={styles.profileAvatarImage} />
+            ) : (
+              <Logo size={55} />
+            )}
           </View>
           <TouchableOpacity onPress={() => router.push("/(tabs)/details")} activeOpacity={0.7}>
             <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
@@ -331,6 +335,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   profileHeader: { backgroundColor: "#e0f2fe", paddingTop: 55, paddingHorizontal: 20, paddingBottom: 20 },
+  profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
   avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center", marginBottom: 12 },
   profileName: { color: "#0f172a", fontSize: 18, fontWeight: "bold" },
   profileCaption: { color: "#64748b", fontSize: 12, marginTop: 3 },
