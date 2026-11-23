@@ -140,8 +140,12 @@ export const AuthProvider = ({ children }) => {
     }
 
     let alive = true;
+    let refreshInProgress = false;
 
     const refreshBookings = async () => {
+      if (refreshInProgress || !alive) return;
+      refreshInProgress = true;
+      try {
       if (currentUser.role === "passenger") {
         const { data, error } = await supabase
           .from("bookings")
@@ -224,9 +228,17 @@ export const AuthProvider = ({ children }) => {
           setActiveBooking(assigned ? mapBooking(assigned) : null);
         }
       }
+      } finally {
+        refreshInProgress = false;
+      }
     };
 
     refreshBookings();
+
+    // Keep bookings current even if a device or network cannot maintain WebSocket Realtime.
+    const bookingRefreshInterval = setInterval(() => {
+      if (alive) refreshBookings();
+    }, 10000);
 
     const channel = supabase
       .channel("moveon-bookings-" + userId)
@@ -236,13 +248,16 @@ export const AuthProvider = ({ children }) => {
         table: "bookings",
       }, refreshBookings)
       .subscribe((status, error) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("Booking realtime error:", error?.message || status);
+        if (status === "SUBSCRIBED") {
+          console.info("Booking realtime connected.");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          console.warn("Booking realtime unavailable; 10-second refresh fallback is active:", error?.message || status);
         }
       });
 
     return () => {
       alive = false;
+      clearInterval(bookingRefreshInterval);
       supabase.removeChannel(channel);
     };
   }, [session?.user?.id, currentUser?.role, currentUser?.driverProfile?.is_online]);
