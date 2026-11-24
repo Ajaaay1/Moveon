@@ -460,8 +460,12 @@ export const AuthProvider = ({ children }) => {
         plate_number: changes.plate_number?.trim().toUpperCase() || "",
       };
 
-      if (!driverChanges.license_id || !driverChanges.vehicle_type || !driverChanges.plate_number) {
-        return { success: false, message: "License ID, vehicle type, and plate number are required for driver accounts." };
+      if (
+        (!driverChanges.license_id && !currentUser?.driverProfile?.license_image_path) ||
+        !driverChanges.vehicle_type ||
+        !driverChanges.plate_number
+      ) {
+        return { success: false, message: "Provide a license ID or license photo, vehicle type, and plate number." };
       }
 
       const { error: driverError } = await supabase
