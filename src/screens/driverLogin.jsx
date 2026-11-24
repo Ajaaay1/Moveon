@@ -162,8 +162,8 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: "rgba(30, 41, 59, 0.92)",
     padding: 22,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 18,
+    gap: 12,
     width: 320,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.2)",
@@ -187,9 +187,9 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "white",
-    padding: 10,
-    borderRadius: 6,
+    borderColor: "#64748b",
+    padding: 12,
+    borderRadius: 10,
     color: "white",
     backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
@@ -197,8 +197,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "white",
-    borderRadius: 6,
+    borderColor: "#64748b",
+    borderRadius: 10,
     backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
   passwordInput: {
@@ -223,9 +223,11 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     backgroundColor: "#0284c7",
-    padding: 12,
-    borderRadius: 6,
+    padding: 14,
+    borderRadius: 12,
     marginTop: 8,
+    minHeight: 48,
+    justifyContent: "center",
   },
   fontColor: {
     color: "white",
