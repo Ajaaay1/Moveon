@@ -3,6 +3,7 @@ import {
   StyleSheet, 
   Text,
   Image, 
+  ScrollView,
   TouchableOpacity, 
   View, 
   Alert, 
@@ -193,6 +194,17 @@ export default function HomeScreen() {
         useNativeDriver: true,
       }).start();
     }
+  };
+
+  const navigateFromDrawer = (path) => {
+    Animated.timing(slideAnim, {
+      toValue: -300,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsDrawerOpen(false);
+      router.push(path);
+    });
   };
 
   useEffect(() => {
@@ -429,7 +441,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.profileNameRow}
             activeOpacity={0.7}
-            onPress={() => router.push("/(tabs)/details")}
+            onPress={() => navigateFromDrawer("/(tabs)/details")}
           >
             <View>
               <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Passenger"}</Text>
@@ -440,11 +452,11 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.drawerContent}>
+        <ScrollView style={styles.drawerContent} showsVerticalScrollIndicator={false}>
           <TouchableOpacity
             style={styles.drawerItem}
             activeOpacity={0.7}
-            onPress={() => router.push("/historyPassenger")}
+            onPress={() => navigateFromDrawer("/historyPassenger")}
           >
             <Ionicons name="document-text-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>History</Text>
@@ -453,7 +465,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.drawerItem}
             activeOpacity={0.7}
-            onPress={() => router.push("/savedplacesPassenger")}
+            onPress={() => navigateFromDrawer("/savedplacesPassenger")}
           >
             <Ionicons name="bookmark-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Saved Places</Text>
@@ -462,7 +474,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.drawerItem}
             activeOpacity={0.7}
-            onPress={() => router.push("/inboxPassenger")}
+            onPress={() => navigateFromDrawer("/inboxPassenger")}
           >
             <Ionicons name="mail-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Inbox</Text>
@@ -471,7 +483,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.drawerItem}
             activeOpacity={0.7}
-            onPress={() => router.push("/paymentPassenger")}
+            onPress={() => navigateFromDrawer("/paymentPassenger")}
           >
             <Ionicons name="card-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Payment Methods</Text>
@@ -480,7 +492,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={styles.drawerItem}
             activeOpacity={0.7}
-            onPress={() => router.push("/supportPassenger")}
+            onPress={() => navigateFromDrawer("/supportPassenger")}
           >
             <Ionicons name="help-circle-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Help & Support</Text>
@@ -493,7 +505,7 @@ export default function HomeScreen() {
             <Ionicons name="settings-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>Settings & Profile</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
 
         {!activeBooking && (
           <TouchableOpacity style={styles.drawerLogoutBtn} onPress={handleLogout} activeOpacity={0.8}>
