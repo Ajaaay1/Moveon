@@ -26,12 +26,12 @@ export default function DriverLoginScreen() {
     if (!emailOrPhone.trim() || !password) {
       Alert.alert(
         "Missing Field",
-        "Please enter your Driver Email or Phone and Password."
+        "Please enter your Driver Email and Password."
       );
       return;
     }
 
-    // 3. Authenticate using AuthContext (checking email/contact info & role)
+    // 3. Authenticate using AuthContext and verify the driver role
     const result = await loginUser(emailOrPhone, password, "driver");
 
     if (!result.success) {
@@ -68,7 +68,7 @@ export default function DriverLoginScreen() {
 
           <TextInput
             style={styles.input}
-            placeholder="driver@example.com / 0917..."
+            placeholder="driver@example.com"
             placeholderTextColor="#ccc"
             autoCapitalize="none"
             keyboardType="email-address"
