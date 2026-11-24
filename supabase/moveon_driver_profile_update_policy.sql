@@ -26,3 +26,8 @@ with check (
       and p.role = 'driver'
   )
 );
+
+revoke update on public.driver_profiles from authenticated;
+grant update (license_id, plate_number, vehicle_type, is_online, auto_accept)
+on public.driver_profiles to authenticated;
+
