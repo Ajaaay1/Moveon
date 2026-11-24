@@ -4,16 +4,24 @@ import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../screens/AuthContext";
 
 export default function TabLayout() {
-  const { currentUser } = useContext(AuthContext);
+  const { currentUser, theme } = useContext(AuthContext);
   const isDriver = currentUser?.role === "driver";
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#0284c7",
-        tabBarInactiveTintColor: "#94a3b8",
-        tabBarStyle: { backgroundColor: "#ffffff", borderTopColor: "#e2e8f0" },
+        tabBarActiveTintColor: theme.accent,
+        tabBarInactiveTintColor: theme.muted,
+        tabBarStyle: {
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          borderTopWidth: 1,
+          height: 62,
+          paddingTop: 7,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
       }}
     >
       <Tabs.Screen
