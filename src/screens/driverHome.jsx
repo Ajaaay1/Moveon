@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, Image, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, Animated, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -130,6 +130,17 @@ export default function DriverHomeScreen() {
     }
   };
 
+  const navigateFromDrawer = (path) => {
+    Animated.timing(slideAnim, {
+      toValue: -300,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsDrawerOpen(false);
+      router.push(path);
+    });
+  };
+
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
       { text: "Cancel", style: "cancel" },
@@ -221,13 +232,13 @@ export default function DriverHomeScreen() {
               <Logo size={55} />
             )}
           </View>
-          <TouchableOpacity onPress={() => router.push("/(tabs)/details")} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigateFromDrawer("/(tabs)/details")} activeOpacity={0.7}>
             <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
             <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Profile & Settings</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.drawerContent}>
+        <ScrollView style={styles.drawerContent} showsVerticalScrollIndicator={false}>
           <View style={styles.drawerSection}>
             <Text style={styles.drawerTitle}>Account Details</Text>
             <Text style={styles.drawerSubtitle}>Contact: {currentUser?.phone || "Not provided"}</Text>
@@ -264,7 +275,7 @@ export default function DriverHomeScreen() {
             <Text style={styles.drawerSubtitle}>Demo balance only</Text>
           </View>
 
-        </View>
+        </ScrollView>
 
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={22} color="#ef4444" />
@@ -374,7 +385,7 @@ const createStyles = (isDark) => StyleSheet.create({
   bookingLine: { color: isDark ? "#cbd5e1" : "#334155", fontSize: 12, marginTop: 5 },
   fare: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 17, fontWeight: "bold" },
   statusBox: { backgroundColor: isDark ? "#12354a" : "#e0f2fe", borderRadius: 8, padding: 9, marginTop: 10 },
-  statusText: { color: "#0369a1", fontSize: 12, fontWeight: "bold" },
+  statusText: { color: isDark ? "#7dd3fc" : "#0369a1", fontSize: 12, fontWeight: "bold" },
   bookButton: { backgroundColor: "#0284c7", padding: 13, borderRadius: 25, alignItems: "center", marginTop: 12 },
   bookButtonText: { color: "#ffffff", fontWeight: "bold" },
 });
