@@ -38,7 +38,8 @@ export default function HomeScreen() {
   const router = useRouter();
   
   // Connect AuthContext
-  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser, submitRiderRating } = useContext(AuthContext);
+  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser, submitRiderRating, isDark, theme } = useContext(AuthContext);
+  const styles = createStyles(isDark);
   
   // Location States
   const [initialRegion, setInitialRegion] = useState(null);
@@ -370,7 +371,7 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           accessibilityLabel="Open passenger menu"
         >
-          <Ionicons name="menu" size={24} color="#000" />
+          <Ionicons name="menu" size={24} color={theme.text} />
         </TouchableOpacity>
       )}
 
@@ -403,7 +404,7 @@ export default function HomeScreen() {
               {!!currentUser?.email && <Text style={styles.profileEmail}>{currentUser.email}</Text>}
               {!!currentUser?.phone && <Text style={styles.profileEmail}>{currentUser.phone}</Text>}
             </View>
-            <Ionicons name="chevron-forward" size={18} color="#0f172a" style={{ marginLeft: 4 }} />
+            <Ionicons name="chevron-forward" size={18} color={theme.text} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         </View>
 
@@ -695,18 +696,18 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isDark) => StyleSheet.create({
   container: { flex: 1 },
   map: { ...StyleSheet.absoluteFillObject },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
   },
-  loadingTitle: { fontSize: 20, fontWeight: 'bold', color: '#0f172a', marginTop: 20 },
-  loadingSubtext: { fontSize: 14, color: '#64748b', textAlign: 'center', marginTop: 8, marginBottom: 30 },
+  loadingTitle: { fontSize: 20, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a", marginTop: 20 },
+  loadingSubtext: { fontSize: 14, color: isDark ? "#9caec2" : "#64748b", textAlign: 'center', marginTop: 8, marginBottom: 30 },
   cancelButton: { backgroundColor: '#fee2e2', paddingVertical: 14, paddingHorizontal: 28, borderRadius: 25 },
   cancelButtonText: { color: '#ef4444', fontSize: 15, fontWeight: 'bold' },
   riderMarker: { backgroundColor: '#10b981', padding: 8, borderRadius: 20, borderWidth: 2, borderColor: '#ffffff' },
@@ -715,7 +716,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#ffffff',
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
@@ -724,66 +725,66 @@ const styles = StyleSheet.create({
     elevation: 15,
   },
   riderStatusHeader: { fontSize: 18, fontWeight: 'bold', color: '#10b981', marginBottom: 12 },
-  bookingHelpText: { color: '#64748b', fontSize: 12, lineHeight: 17, marginBottom: 10 },
+  bookingHelpText: { color: isDark ? "#9caec2" : "#64748b", fontSize: 12, lineHeight: 17, marginBottom: 10 },
   fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  smallLabel: { fontSize: 11, color: '#64748b', fontWeight: '600' },
-  bookingValue: { color: '#0f172a', fontSize: 13, fontWeight: '600', marginTop: 3 },
-  bookingFare: { color: '#0284c7', fontSize: 20, fontWeight: 'bold' },
-  bookingDestination: { borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 8, marginBottom: 10 },
-  distanceText: { fontSize: 11, color: '#64748b', marginTop: 2 },
+  smallLabel: { fontSize: 11, color: isDark ? "#9caec2" : "#64748b", fontWeight: '600' },
+  bookingValue: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 13, fontWeight: '600', marginTop: 3 },
+  bookingFare: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 20, fontWeight: 'bold' },
+  bookingDestination: { borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0", paddingTop: 8, marginBottom: 10 },
+  distanceText: { fontSize: 11, color: isDark ? "#9caec2" : "#64748b", marginTop: 2 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
   locationTextContainer: { flex: 1 },
-  locationLabel: { fontSize: 11, color: '#64748b', marginBottom: 2 },
-  farePreview: { backgroundColor: '#f0f9ff', borderRadius: 12, padding: 14, marginBottom: 14 },
-  farePreviewLabel: { color: '#64748b', fontSize: 12, fontWeight: '600' },
-  farePreviewAmount: { color: '#0284c7', fontSize: 24, fontWeight: 'bold', marginTop: 3 },
-  farePreviewNote: { color: '#64748b', fontSize: 10, marginTop: 3 },
+  locationLabel: { fontSize: 11, color: isDark ? "#9caec2" : "#64748b", marginBottom: 2 },
+  farePreview: { backgroundColor: isDark ? "#12354a" : "#f0f9ff", borderRadius: 12, padding: 14, marginBottom: 14 },
+  farePreviewLabel: { color: isDark ? "#9caec2" : "#64748b", fontSize: 12, fontWeight: '600' },
+  farePreviewAmount: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 24, fontWeight: 'bold', marginTop: 3 },
+  farePreviewNote: { color: isDark ? "#9caec2" : "#64748b", fontSize: 10, marginTop: 3 },
   ratingModalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  ratingModalCard: { width: '100%', maxWidth: 340, backgroundColor: '#ffffff', borderRadius: 20, padding: 24, alignItems: 'center', gap: 12 },
-  ratingModalTitle: { color: '#0f172a', fontSize: 21, fontWeight: 'bold' },
-  ratingModalText: { color: '#64748b', fontSize: 13, textAlign: 'center' },
+  ratingModalCard: { width: '100%', maxWidth: 340, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderRadius: 20, padding: 24, alignItems: 'center', gap: 12 },
+  ratingModalTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 21, fontWeight: 'bold' },
+  ratingModalText: { color: isDark ? "#9caec2" : "#64748b", fontSize: 13, textAlign: 'center' },
   ratingStars: { flexDirection: 'row', gap: 10, marginVertical: 8 },
   disabledButton: { opacity: 0.45 },
   riderInfoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  riderAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#e0f2fe', justifyContent: 'center', alignItems: 'center' },
+  riderAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: isDark ? "#12354a" : "#e0f2fe", justifyContent: 'center', alignItems: 'center' },
   riderDetails: { flex: 1, marginLeft: 14 },
-  riderName: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  riderSubtext: { fontSize: 13, color: '#64748b', marginTop: 2 },
+  riderName: { fontSize: 16, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a" },
+  riderSubtext: { fontSize: 13, color: isDark ? "#9caec2" : "#64748b", marginTop: 2 },
   riderRating: { fontSize: 12, fontWeight: 'bold', color: '#f59e0b', marginTop: 2 },
   callButton: { backgroundColor: '#10b981', padding: 12, borderRadius: 25 },
-  cancelRideButton: { backgroundColor: '#f1f5f9', paddingVertical: 14, borderRadius: 25, alignItems: 'center' },
+  cancelRideButton: { backgroundColor: isDark ? "#1e293b" : "#f1f5f9", paddingVertical: 14, borderRadius: 25, alignItems: 'center' },
   cancelRideText: { color: '#ef4444', fontSize: 15, fontWeight: 'bold' },
-  menuButton: { position: 'absolute', top: 60, left: 20, backgroundColor: '#ffffff', padding: 10, borderRadius: 25, elevation: 5, zIndex: 10 },
+  menuButton: { position: 'absolute', top: 60, left: 20, backgroundColor: isDark ? "#111c2e" : "#ffffff", padding: 10, borderRadius: 25, elevation: 5, zIndex: 10 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.4)', zIndex: 15 },
-  drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 300, backgroundColor: '#ffffff', zIndex: 20, elevation: 20 },
-  profileHeader: { backgroundColor: '#e0f2fe', paddingTop: 60, paddingHorizontal: 20, paddingBottom: 24 },
+  drawer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: 300, backgroundColor: isDark ? "#111c2e" : "#ffffff", zIndex: 20, elevation: 20 },
+  profileHeader: { backgroundColor: isDark ? "#12354a" : "#e0f2fe", paddingTop: 60, paddingHorizontal: 20, paddingBottom: 24 },
   profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
-  avatarContainer: { width: 75, height: 75, borderRadius: 37.5, backgroundColor: '#ffffff', justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
+  avatarContainer: { width: 75, height: 75, borderRadius: 37.5, backgroundColor: isDark ? "#111c2e" : "#ffffff", justifyContent: 'center', alignItems: 'center', marginBottom: 14 },
   profileNameRow: { flexDirection: 'row', alignItems: 'center' },
-  profileName: { fontSize: 18, fontWeight: 'bold', color: '#0f172a' },
-  profileEmail: { fontSize: 12, color: '#475569', marginTop: 3 },
+  profileName: { fontSize: 18, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a" },
+  profileEmail: { fontSize: 12, color: isDark ? "#b6c2d2" : "#475569", marginTop: 3 },
   drawerContent: { flex: 1, paddingTop: 10, paddingHorizontal: 16 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 8 },
-  drawerItemText: { fontSize: 16, fontWeight: '500', color: '#0f172a', marginLeft: 16 },
-  drawerLogoutBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: '#f1f5f9' },
+  drawerItemText: { fontSize: 16, fontWeight: '500', color: isDark ? "#f8fafc" : "#0f172a", marginLeft: 16 },
+  drawerLogoutBtn: { flexDirection: 'row', alignItems: 'center', paddingVertical: 18, paddingHorizontal: 24, borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#f1f5f9" },
   drawerLogoutText: { fontSize: 16, fontWeight: 'bold', color: '#ef4444', marginLeft: 16 },
-  bottomContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, elevation: 10 },
+  bottomContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40, elevation: 10 },
   serviceRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  serviceText: { fontSize: 16, fontWeight: 'bold', color: '#0f172a' },
-  bookButton: { backgroundColor: '#e2e8f0', paddingVertical: 16, borderRadius: 30, alignItems: 'center' },
-  bookText: { color: '#64748b', fontSize: 16, fontWeight: 'bold' },
-  expandedContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#ffffff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40, elevation: 15, zIndex: 20 },
+  serviceText: { fontSize: 16, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a" },
+  bookButton: { backgroundColor: isDark ? "#1e293b" : "#e2e8f0", paddingVertical: 16, borderRadius: 30, alignItems: 'center' },
+  bookText: { color: isDark ? "#9caec2" : "#64748b", fontSize: 16, fontWeight: 'bold' },
+  expandedContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 40, elevation: 15, zIndex: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#0f172a' },
-  sectionLabel: { fontSize: 14, color: '#64748b', marginBottom: 16, fontWeight: '600' },
-  serviceCard: { width: 140, backgroundColor: '#f0fdf4', borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 16, padding: 16, alignItems: 'center' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a" },
+  sectionLabel: { fontSize: 14, color: isDark ? "#9caec2" : "#64748b", marginBottom: 16, fontWeight: '600' },
+  serviceCard: { width: 140, backgroundColor: isDark ? "#14352b" : "#f0fdf4", borderWidth: 1, borderColor: '#bbf7d0', borderRadius: 16, padding: 16, alignItems: 'center' },
   serviceIconContainer: { marginBottom: 10 },
-  serviceCardText: { fontSize: 15, fontWeight: 'bold', color: '#0f172a' },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12 },
+  serviceCardText: { fontSize: 15, fontWeight: 'bold', color: isDark ? "#f8fafc" : "#0f172a" },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: isDark ? "#0b1220" : "#f8fafc", borderWidth: 1, borderColor: isDark ? "#2b3a4f" : "#e2e8f0", borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 12 },
   inputIcon: { marginRight: 10 },
-  readOnlyInput: { fontSize: 15, color: '#334155', fontWeight: '500' },
-  textInput: { flex: 1, fontSize: 15, color: '#0f172a' },
-  mapHintText: { fontSize: 12, color: '#64748b', marginBottom: 16, fontStyle: 'italic' },
+  readOnlyInput: { fontSize: 15, color: isDark ? "#cbd5e1" : "#334155", fontWeight: '500' },
+  textInput: { flex: 1, fontSize: 15, color: isDark ? "#f8fafc" : "#0f172a" },
+  mapHintText: { fontSize: 12, color: isDark ? "#9caec2" : "#64748b", marginBottom: 16, fontStyle: 'italic' },
   confirmBookButton: { backgroundColor: '#0284c7', paddingVertical: 16, borderRadius: 30, alignItems: 'center' },
   confirmBookText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
 });
