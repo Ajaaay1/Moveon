@@ -7,7 +7,8 @@ import { supabase } from "../lib/supabase";
 
 export default function RideHistoryScreen() {
   const router = useRouter();
-  const { session, currentUser } = useContext(AuthContext);
+  const { session, currentUser, isDark, theme } = useContext(AuthContext);
+  const styles = createStyles(isDark);
   const [rides, setRides] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +53,7 @@ export default function RideHistoryScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={23} color="#0f172a" />
+          <Ionicons name="arrow-back" size={23} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Ride History</Text>
       </View>
@@ -96,22 +97,22 @@ export default function RideHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
-  header: { paddingTop: 54, paddingHorizontal: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", backgroundColor: "#ffffff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+const createStyles = (isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: isDark ? "#0b1220" : "#f8fafc" },
+  header: { paddingTop: 54, paddingHorizontal: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", backgroundColor: isDark ? "#111c2e" : "#ffffff", borderBottomWidth: 1, borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0" },
   backButton: { paddingRight: 16, paddingVertical: 4 },
-  title: { color: "#0f172a", fontSize: 20, fontWeight: "bold" },
+  title: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 20, fontWeight: "bold" },
   list: { padding: 16, paddingBottom: 30 },
   emptyList: { flexGrow: 1, justifyContent: "center", padding: 24 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 28 },
-  emptyTitle: { color: "#0f172a", fontSize: 18, fontWeight: "bold", marginTop: 14 },
-  subtitle: { color: "#64748b", textAlign: "center", marginTop: 7, lineHeight: 20 },
-  card: { backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 15, padding: 16, marginBottom: 12 },
+  emptyTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 18, fontWeight: "bold", marginTop: 14 },
+  subtitle: { color: isDark ? "#9caec2" : "#64748b", textAlign: "center", marginTop: 7, lineHeight: 20 },
+  card: { backgroundColor: isDark ? "#111c2e" : "#ffffff", borderWidth: 1, borderColor: isDark ? "#2b3a4f" : "#e2e8f0", borderRadius: 15, padding: 16, marginBottom: 12 },
   cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  passenger: { color: "#0f172a", fontSize: 16, fontWeight: "bold", flex: 1 },
-  fare: { color: "#0284c7", fontSize: 17, fontWeight: "bold" },
+  passenger: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 16, fontWeight: "bold", flex: 1 },
+  fare: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 17, fontWeight: "bold" },
   routeRow: { flexDirection: "row", alignItems: "center", gap: 9, marginTop: 8 },
-  routeText: { color: "#334155", fontSize: 13, flex: 1 },
-  footer: { borderTopWidth: 1, borderTopColor: "#e2e8f0", marginTop: 14, paddingTop: 10, flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },
-  meta: { color: "#94a3b8", fontSize: 11 },
+  routeText: { color: isDark ? "#cbd5e1" : "#334155", fontSize: 13, flex: 1 },
+  footer: { borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0", marginTop: 14, paddingTop: 10, flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },
+  meta: { color: isDark ? "#90a0b5" : "#94a3b8", fontSize: 11 },
 });
