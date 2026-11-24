@@ -16,11 +16,17 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists email text;
 
+alter table public.driver_profiles
+  add column if not exists is_online boolean not null default false,
+  add column if not exists auto_accept boolean not null default false;
+
 create table if not exists public.driver_profiles (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   license_id text,
   license_image_path text,
   plate_number text not null,
+  is_online boolean not null default false,
+  auto_accept boolean not null default false,
   verification_status text not null default 'pending'
     check (verification_status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now(),
