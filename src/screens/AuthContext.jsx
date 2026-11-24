@@ -351,12 +351,42 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (newUser.role === "driver") {
+      let licenseImagePath = null;
+
+      if (newUser.licenseImageUri) {
+        try {
+          const fileResponse = await fetch(newUser.licenseImageUri);
+          const imageBlob = await fileResponse.blob();
+          const extension = (newUser.licenseImageUri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
+          const mimeType = extension === "png"
+            ? "image/png"
+            : extension === "webp"
+              ? "image/webp"
+              : "image/jpeg";
+          licenseImagePath = data.user.id + "/" + Date.now() + "." + (extension === "jpeg" ? "jpg" : extension);
+
+          const { error: uploadError } = await supabase.storage
+            .from("driver-licenses")
+            .upload(licenseImagePath, imageBlob, {
+              contentType: mimeType,
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (uploadError) {
+            return { success: false, message: "Account created, but the license photo could not be uploaded: " + uploadError.message };
+          }
+        } catch (uploadError) {
+          return { success: false, message: "Account created, but the license photo could not be uploaded: " + uploadError.message };
+        }
+      }
+
       const { error: driverError } = await supabase
         .from("driver_profiles")
         .insert({
           user_id: data.user.id,
-          license_id: newUser.licenseId || null,
-          license_image_path: null,
+          license_id: newUser.licenseId?.trim() || null,
+          license_image_path: licenseImagePath,
           plate_number: newUser.plateNumber.trim().toUpperCase(),
           vehicle_type: newUser.vehicleType.trim(),
           verification_status: "pending",
