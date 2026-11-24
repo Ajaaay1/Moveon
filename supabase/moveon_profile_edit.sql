@@ -22,7 +22,7 @@ using ((select auth.uid()) = user_id)
 with check ((select auth.uid()) = user_id);
 
 revoke update on public.profiles from authenticated;
-grant update (full_name, phone) on public.profiles to authenticated;
+grant update (full_name, phone, avatar_url) on public.profiles to authenticated;
 
 revoke update on public.driver_profiles from authenticated;
 grant update (license_id, plate_number, vehicle_type, is_online, auto_accept)
