@@ -3,7 +3,9 @@
 -- and persistent passenger-to-driver ratings.
 
 alter table public.driver_profiles
-  add column if not exists vehicle_type text;
+  add column if not exists vehicle_type text,
+  add column if not exists is_online boolean not null default false,
+  add column if not exists auto_accept boolean not null default false;
 
 create table if not exists public.bookings (
   id uuid primary key default gen_random_uuid(),
