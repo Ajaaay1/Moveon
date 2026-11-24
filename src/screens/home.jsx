@@ -467,7 +467,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => navigateFromDrawer("/savedplacesPassenger")}
           >
-            <Ionicons name="bookmark-outline" size={22} color="#0f172a" />
+            <Ionicons name="bookmark-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>Saved Places</Text>
           </TouchableOpacity>
 
@@ -476,7 +476,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => navigateFromDrawer("/inboxPassenger")}
           >
-            <Ionicons name="mail-outline" size={22} color="#0f172a" />
+            <Ionicons name="mail-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>Inbox</Text>
           </TouchableOpacity>
 
@@ -485,7 +485,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => navigateFromDrawer("/paymentPassenger")}
           >
-            <Ionicons name="card-outline" size={22} color="#0f172a" />
+            <Ionicons name="card-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>Payment Methods</Text>
           </TouchableOpacity>
 
@@ -494,7 +494,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => navigateFromDrawer("/supportPassenger")}
           >
-            <Ionicons name="help-circle-outline" size={22} color="#0f172a" />
+            <Ionicons name="help-circle-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>Help & Support</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -546,7 +546,7 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Book {selectedService}</Text>
             <TouchableOpacity onPress={() => setIsFormOpen(false)}>
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
 
