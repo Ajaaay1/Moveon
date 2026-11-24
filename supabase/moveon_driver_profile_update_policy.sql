@@ -1,5 +1,5 @@
 -- Keep the driver's availability and editable registration fields under one RLS UPDATE policy.
--- Column-level UPDATE grants still restrict which fields the authenticated driver can change.
+-- Column-level UPDATE grants restrict changes to each driver's own editable fields.
 
 drop policy if exists "Drivers update own availability settings" on public.driver_profiles;
 drop policy if exists "Drivers update own registration details" on public.driver_profiles;
