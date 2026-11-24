@@ -205,8 +205,9 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255, 255, 255, 0.16)",
   },
   label: {
-    color: "#ffffff",
-    fontWeight: "bold",
+    color: "#f8fafc",
+    fontWeight: "700",
+    fontSize: 13,
   },
   input: {
     borderWidth: 1,
