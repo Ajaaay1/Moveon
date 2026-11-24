@@ -16,10 +16,6 @@ create table if not exists public.profiles (
 
 alter table public.profiles add column if not exists email text;
 
-alter table public.driver_profiles
-  add column if not exists is_online boolean not null default false,
-  add column if not exists auto_accept boolean not null default false;
-
 create table if not exists public.driver_profiles (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   license_id text,
@@ -35,6 +31,10 @@ create table if not exists public.driver_profiles (
   constraint driver_plate_required
     check (nullif(trim(plate_number), '') is not null)
 );
+
+alter table public.driver_profiles
+  add column if not exists is_online boolean not null default false,
+  add column if not exists auto_accept boolean not null default false;
 
 alter table public.profiles enable row level security;
 alter table public.driver_profiles enable row level security;
