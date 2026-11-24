@@ -75,8 +75,8 @@ export default function ProfileDetailsScreen() {
       return;
     }
 
-    if (isDriver && (!licenseId.trim() || !vehicleType.trim() || !plateNumber.trim())) {
-      Alert.alert("Missing information", "Please complete your license ID, vehicle type, and plate number.");
+    if (isDriver && ((!licenseId.trim() && !currentUser?.driverProfile?.license_image_path) || !vehicleType.trim() || !plateNumber.trim())) {
+      Alert.alert("Missing information", "Please provide a license ID or license photo, vehicle type, and plate number.");
       return;
     }
 
