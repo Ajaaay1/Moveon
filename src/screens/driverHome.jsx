@@ -223,7 +223,7 @@ export default function DriverHomeScreen() {
           </View>
           <TouchableOpacity onPress={() => router.push("/(tabs)/details")} activeOpacity={0.7}>
             <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
-            <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Edit Profile</Text>
+            <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Profile & Settings</Text>
           </TouchableOpacity>
         </View>
 
