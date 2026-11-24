@@ -1,7 +1,35 @@
 import React, { createContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 
 export const AuthContext = createContext();
+
+const APP_THEMES = {
+  light: {
+    background: "#f8fafc",
+    surface: "#ffffff",
+    surfaceMuted: "#f1f5f9",
+    text: "#0f172a",
+    textSecondary: "#334155",
+    muted: "#64748b",
+    border: "#e2e8f0",
+    input: "#ffffff",
+    accent: "#0284c7",
+    accentSoft: "#e0f2fe",
+  },
+  dark: {
+    background: "#0b1220",
+    surface: "#111c2e",
+    surfaceMuted: "#1e293b",
+    text: "#f8fafc",
+    textSecondary: "#cbd5e1",
+    muted: "#9caec2",
+    border: "#2b3a4f",
+    input: "#172338",
+    accent: "#38bdf8",
+    accentSoft: "#12354a",
+  },
+};
 
 const mapBooking = (row) => ({
   ...row,
@@ -53,6 +81,36 @@ export const AuthProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState(null);
   const [incomingBookings, setIncomingBookings] = useState([]);
+  const [themeMode, setThemeModeState] = useState("light");
+  const isDark = themeMode === "dark";
+  const theme = isDark ? APP_THEMES.dark : APP_THEMES.light;
+
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem("moveon_theme_mode")
+      .then((savedMode) => {
+        if (mounted && (savedMode === "light" || savedMode === "dark")) {
+          setThemeModeState(savedMode);
+        }
+      })
+      .catch((error) => console.warn("Theme preference could not be loaded:", error.message));
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setThemeMode = async (mode) => {
+    if (mode !== "light" && mode !== "dark") return;
+    setThemeModeState(mode);
+    try {
+      await AsyncStorage.setItem("moveon_theme_mode", mode);
+    } catch (error) {
+      console.warn("Theme preference could not be saved:", error.message);
+    }
+  };
+
+  const toggleDarkMode = (enabled) => setThemeMode(enabled ? "dark" : "light");
 
   const loadProfile = async (user) => {
     if (!user) {
@@ -185,6 +243,10 @@ export const AuthProvider = ({ children }) => {
 
           if (ratingError) console.warn("Ride rating lookup error:", ratingError.message);
           existingRating = ratingRow?.rating ?? null;
+          if (existingRating !== null) {
+            if (alive) setActiveBooking(null);
+            return;
+          }
         }
 
         if (alive) {
@@ -623,6 +685,11 @@ export const AuthProvider = ({ children }) => {
       session,
       currentUser,
       authLoading,
+      themeMode,
+      isDark,
+      theme,
+      setThemeMode,
+      toggleDarkMode,
       registerUser,
       loginUser,
       updateProfile,
