@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }) => {
           .from("bookings")
           .select("*")
           .eq("passenger_id", userId)
-          .in("status", ["searching", "accepted", "arrived", "in_progress", "completed"])
+          .in("status", ["searching", "accepted", "arrived", "in_progress",])
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -418,13 +418,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const clearBooking = async () => {
+    setActiveBooking(null); // <--- Clear ang active booking state diretso para sa UI
+
     if (!activeBooking?.id || !session?.user?.id) {
-      setActiveBooking(null);
       return { success: true };
     }
 
     if (activeBooking.status !== "Waiting for driver") {
-      setActiveBooking(null);
       return { success: true };
     }
 
@@ -436,7 +436,6 @@ export const AuthProvider = ({ children }) => {
       .eq("status", "searching");
 
     if (error) return { success: false, message: error.message };
-    setActiveBooking(null);
     return { success: true };
   };
 

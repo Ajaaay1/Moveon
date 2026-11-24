@@ -15,8 +15,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 const SUPPORT_EMAIL = "ajsarsonas@gmail.com";
-const PHONE_1 = "09605198902";
-const PHONE_2 = "09533845614";
+const PHONE_1 = "09605123232";
+const PHONE_2 = "09533512323";
 
 const faqs = [
   {
