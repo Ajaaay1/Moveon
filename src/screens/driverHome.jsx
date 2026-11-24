@@ -284,7 +284,7 @@ export default function DriverHomeScreen() {
       </Animated.View>
 
       {/* Driver Bottom Panel for Accepting/Managing Booking */}
-      <View style={styles.bottomPanel}>
+      <ScrollView style={styles.bottomPanel} contentContainerStyle={styles.bottomPanelContent} showsVerticalScrollIndicator={false}>
         {activeBooking ? (
           <>
             <View style={styles.bookingHeader}>
@@ -336,7 +336,7 @@ export default function DriverHomeScreen() {
             <Text style={styles.panelSubtitle}>Turn on Driver Status in your drawer to receive bookings.</Text>
           </>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -377,6 +377,7 @@ const createStyles = (isDark) => StyleSheet.create({
   historyFare: { color: isDark ? "#38bdf8" : "#0284c7", fontWeight: "bold" },
   logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 17, paddingHorizontal: 22, borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0" },
   logoutText: { color: "#ef4444", fontWeight: "bold", marginLeft: 12 },
+  bottomPanelContent: { paddingBottom: 8 },
   bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10, maxHeight: "55%" },
   requestCard: { borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0", paddingTop: 10, marginTop: 8 },
   bookingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
