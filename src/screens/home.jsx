@@ -7,6 +7,7 @@ import {
   View, 
   Alert, 
   Animated,
+  BackHandler,
   Modal
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -193,6 +194,37 @@ export default function HomeScreen() {
       }).start();
     }
   };
+
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (isFormOpen) {
+        setIsFormOpen(false);
+        return true;
+      }
+      if (isServiceModalOpen) {
+        setIsServiceModalOpen(false);
+        return true;
+      }
+      if (isDrawerOpen) {
+        Animated.timing(slideAnim, {
+          toValue: -300,
+          duration: 220,
+          useNativeDriver: true,
+        }).start(() => setIsDrawerOpen(false));
+        return true;
+      }
+      if (activeBooking) return true;
+
+      Alert.alert("Exit Moveon", "Are you sure you want to exit the app?", [
+        { text: "Stay", style: "cancel" },
+        { text: "Exit", style: "destructive", onPress: () => BackHandler.exitApp() },
+      ]);
+      return true;
+    };
+
+    const backSubscription = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
+    return () => backSubscription.remove();
+  }, [isFormOpen, isServiceModalOpen, isDrawerOpen, activeBooking?.id]);
 
   const handleLogout = async () => {
     const result = await logoutUser();
@@ -414,7 +446,7 @@ export default function HomeScreen() {
             activeOpacity={0.7}
             onPress={() => router.push("/historyPassenger")}
           >
-            <Ionicons name="document-text-outline" size={22} color="#0f172a" />
+            <Ionicons name="document-text-outline" size={22} color={theme.text} />
             <Text style={styles.drawerItemText}>History</Text>
           </TouchableOpacity>
 
@@ -453,6 +485,14 @@ export default function HomeScreen() {
             <Ionicons name="help-circle-outline" size={22} color="#0f172a" />
             <Text style={styles.drawerItemText}>Help & Support</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.drawerItem}
+            activeOpacity={0.7}
+            onPress={() => router.push("/(tabs)/details")}
+          >
+            <Ionicons name="settings-outline" size={22} color={theme.text} />
+            <Text style={styles.drawerItemText}>Settings & Profile</Text>
+          </TouchableOpacity>
         </View>
 
         {!activeBooking && (
@@ -469,7 +509,7 @@ export default function HomeScreen() {
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>Book a Ride</Text>
             <TouchableOpacity onPress={() => setIsServiceModalOpen(false)}>
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={theme.text} />
             </TouchableOpacity>
           </View>
 
