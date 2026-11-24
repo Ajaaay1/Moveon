@@ -46,10 +46,10 @@ export default function LoginScreen() {
           <Logo />
           <Text style={styles.headerTitle}>Login to MoveOn</Text>
 
-          <Text style={styles.label}>Email / Username</Text>
+          <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
-            placeholder="Email@example.com"
+            placeholder="email@example.com"
             placeholderTextColor="#ccc"
             onChangeText={setEmail}
             value={email}
