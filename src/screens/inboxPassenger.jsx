@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "./AuthContext";
 
 export default function InboxScreen() {
   const router = useRouter();
+  const { isDark, theme } = useContext(AuthContext);
+  const styles = createStyles(isDark);
 
   const [notifications, setNotifications] = useState([
     {
@@ -45,7 +48,7 @@ export default function InboxScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={26} color="#0f172a" />
+          <Ionicons name="arrow-back" size={26} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Inbox</Text>
       </View>
@@ -90,8 +93,8 @@ export default function InboxScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const createStyles = (isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: isDark ? "#111c2e" : "#fff" },
   header: {
     paddingTop: 55,
     paddingHorizontal: 20,
@@ -100,42 +103,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0",
   },
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
   },
   list: { padding: 20 },
   card: {
     flexDirection: "row",
     padding: 16,
-    backgroundColor: "#fff",
+    backgroundColor: isDark ? "#111c2e" : "#fff",
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: isDark ? "#2b3a4f" : "#e2e8f0",
     borderRadius: 14,
     marginBottom: 12,
     gap: 12,
   },
   unreadCard: {
-    backgroundColor: "#e0f2fe",
+    backgroundColor: isDark ? "#12354a" : "#e0f2fe",
     borderColor: "#bae6fd",
   },
   messageContainer: { flex: 1 },
   notificationTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
   },
   message: {
     fontSize: 14,
-    color: "#64748b",
+    color: isDark ? "#9caec2" : "#64748b",
     marginTop: 5,
   },
   status: {
     fontSize: 12,
-    color: "#0284c7",
+    color: isDark ? "#38bdf8" : "#0284c7",
     marginTop: 8,
   },
   dot: {
