@@ -5,6 +5,7 @@ import {
   Image,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -17,8 +18,9 @@ import { AuthContext } from "./AuthContext";
 
 export default function ProfileDetailsScreen() {
   const router = useRouter();
-  const { currentUser, updateProfile } = useContext(AuthContext);
+  const { currentUser, updateProfile, isDark, theme, toggleDarkMode } = useContext(AuthContext);
   const isDriver = currentUser?.role === "driver";
+  const styles = createStyles(isDark);
 
   const [isEditing, setIsEditing] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -113,7 +115,7 @@ export default function ProfileDetailsScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={23} color="#0f172a" />
+          <Ionicons name="arrow-back" size={23} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>My Profile</Text>
         <TouchableOpacity
@@ -131,7 +133,7 @@ export default function ProfileDetailsScreen() {
             <Image source={{ uri: displayedAvatar }} style={styles.avatarImage} />
           ) : (
             <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={42} color="#0284c7" />
+              <Ionicons name="person" size={42} color={theme.accent} />
             </View>
           )}
 
@@ -202,24 +204,48 @@ export default function ProfileDetailsScreen() {
           </>
         ) : (
           <View style={styles.detailsCard}>
-            <ProfileRow label="Full Name" value={currentUser.full_name} />
-            <ProfileRow label="Email Address" value={currentUser.email} />
-            <ProfileRow label="Contact Number" value={currentUser.phone} />
+            <ProfileRow styles={styles} label="Full Name" value={currentUser.full_name} />
+            <ProfileRow styles={styles} label="Email Address" value={currentUser.email} />
+            <ProfileRow styles={styles} label="Contact Number" value={currentUser.phone} />
             {isDriver && (
               <>
-                <ProfileRow label="Driver's License ID" value={currentUser.driverProfile?.license_id} />
-                <ProfileRow label="Vehicle Type / Model" value={currentUser.driverProfile?.vehicle_type} />
-                <ProfileRow label="Vehicle Plate Number" value={currentUser.driverProfile?.plate_number} />
+                <ProfileRow styles={styles} label="Driver's License ID" value={currentUser.driverProfile?.license_id} />
+                <ProfileRow styles={styles} label="Vehicle Type / Model" value={currentUser.driverProfile?.vehicle_type} />
+                <ProfileRow styles={styles} label="Vehicle Plate Number" value={currentUser.driverProfile?.plate_number} />
               </>
             )}
           </View>
         )}
+
+        <View style={styles.settingsCard}>
+          <Text style={styles.sectionTitle}>Settings</Text>
+          <View style={styles.settingRow}>
+            <View style={styles.settingInfo}>
+              <View style={styles.settingIcon}>
+                <Ionicons name={isDark ? "moon" : "sunny"} size={20} color={theme.accent} />
+              </View>
+              <View style={styles.settingCopy}>
+                <Text style={styles.settingTitle}>Dark Mode</Text>
+                <Text style={styles.settingHint}>
+                  {isDark ? "A darker look that is easier on the eyes." : "Use a darker color theme across the app."}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={toggleDarkMode}
+              trackColor={{ false: "#cbd5e1", true: "#0284c7" }}
+              thumbColor="#ffffff"
+              accessibilityLabel="Enable dark mode"
+            />
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-function ProfileRow({ label, value }) {
+function ProfileRow({ label, value, styles }) {
   return (
     <View style={styles.profileRow}>
       <Text style={styles.profileLabel}>{label}</Text>
@@ -228,30 +254,38 @@ function ProfileRow({ label, value }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8fafc" },
-  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#f8fafc" },
-  header: { paddingTop: 54, paddingHorizontal: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", backgroundColor: "#ffffff", borderBottomWidth: 1, borderBottomColor: "#e2e8f0" },
+const createStyles = (isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: isDark ? "#0b1220" : "#f8fafc" },
+  loading: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: isDark ? "#0b1220" : "#f8fafc" },
+  header: { paddingTop: 54, paddingHorizontal: 20, paddingBottom: 16, flexDirection: "row", alignItems: "center", backgroundColor: isDark ? "#111c2e" : "#ffffff", borderBottomWidth: 1, borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0" },
   backButton: { paddingRight: 16, paddingVertical: 4 },
-  title: { color: "#0f172a", fontSize: 20, fontWeight: "bold", flex: 1 },
+  title: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 20, fontWeight: "bold", flex: 1 },
   headerAction: { paddingHorizontal: 10, paddingVertical: 7 },
-  headerActionText: { color: "#0284c7", fontSize: 15, fontWeight: "700" },
+  headerActionText: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 15, fontWeight: "700" },
   content: { padding: 22, paddingBottom: 40 },
   avatarWrap: { alignItems: "center", marginTop: 10 },
-  avatarPlaceholder: { width: 104, height: 104, borderRadius: 52, backgroundColor: "#e0f2fe", alignItems: "center", justifyContent: "center" },
-  avatarImage: { width: 104, height: 104, borderRadius: 52, backgroundColor: "#e2e8f0" },
+  avatarPlaceholder: { width: 104, height: 104, borderRadius: 52, backgroundColor: isDark ? "#12354a" : "#e0f2fe", alignItems: "center", justifyContent: "center" },
+  avatarImage: { width: 104, height: 104, borderRadius: 52, backgroundColor: isDark ? "#1e293b" : "#e2e8f0" },
   changePhotoButton: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#0284c7", paddingHorizontal: 13, paddingVertical: 8, borderRadius: 20 },
   changePhotoText: { color: "#ffffff", fontSize: 12, fontWeight: "600" },
-  role: { color: "#64748b", textAlign: "center", marginTop: 12, marginBottom: 25, fontWeight: "600" },
-  label: { color: "#334155", fontSize: 13, fontWeight: "600", marginBottom: 7, marginTop: 14 },
-  input: { backgroundColor: "#ffffff", borderWidth: 1, borderColor: "#cbd5e1", borderRadius: 11, paddingHorizontal: 14, paddingVertical: 13, color: "#0f172a", fontSize: 15 },
-  readOnlyField: { backgroundColor: "#e2e8f0", borderRadius: 11, paddingHorizontal: 14, paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  readOnlyText: { color: "#475569", fontSize: 15 },
-  hint: { color: "#94a3b8", fontSize: 11, marginTop: 5 },
+  role: { color: isDark ? "#9caec2" : "#64748b", textAlign: "center", marginTop: 12, marginBottom: 25, fontWeight: "600" },
+  label: { color: isDark ? "#cbd5e1" : "#334155", fontSize: 13, fontWeight: "600", marginBottom: 7, marginTop: 14 },
+  input: { backgroundColor: isDark ? "#111c2e" : "#ffffff", borderWidth: 1, borderColor: isDark ? "#3b4d64" : "#cbd5e1", borderRadius: 11, paddingHorizontal: 14, paddingVertical: 13, color: isDark ? "#f8fafc" : "#0f172a", fontSize: 15 },
+  readOnlyField: { backgroundColor: isDark ? "#1e293b" : "#e2e8f0", borderRadius: 11, paddingHorizontal: 14, paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  readOnlyText: { color: isDark ? "#b6c2d2" : "#475569", fontSize: 15 },
+  hint: { color: isDark ? "#90a0b5" : "#94a3b8", fontSize: 11, marginTop: 5 },
   saveButton: { marginTop: 28, backgroundColor: "#0284c7", borderRadius: 12, paddingVertical: 15, alignItems: "center" },
   saveText: { color: "#ffffff", fontSize: 15, fontWeight: "bold" },
-  detailsCard: { backgroundColor: "#ffffff", borderRadius: 15, borderWidth: 1, borderColor: "#e2e8f0", paddingHorizontal: 16 },
-  profileRow: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-  profileLabel: { color: "#94a3b8", fontSize: 12, marginBottom: 5 },
-  profileValue: { color: "#0f172a", fontSize: 15, fontWeight: "600" },
+  settingsCard: { backgroundColor: isDark ? "#111c2e" : "#ffffff", borderRadius: 15, borderWidth: 1, borderColor: isDark ? "#2b3a4f" : "#e2e8f0", padding: 16, marginTop: 22 },
+  sectionTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 16, fontWeight: "700", marginBottom: 14 },
+  settingRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+  settingInfo: { flexDirection: "row", alignItems: "center", flex: 1, gap: 12 },
+  settingIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: isDark ? "#12354a" : "#e0f2fe", alignItems: "center", justifyContent: "center" },
+  settingCopy: { flex: 1 },
+  settingTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 14, fontWeight: "700" },
+  settingHint: { color: isDark ? "#9caec2" : "#64748b", fontSize: 11, lineHeight: 16, marginTop: 3 },
+  detailsCard: { backgroundColor: isDark ? "#111c2e" : "#ffffff", borderRadius: 15, borderWidth: 1, borderColor: isDark ? "#2b3a4f" : "#e2e8f0", paddingHorizontal: 16 },
+  profileRow: { paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: isDark ? "#2b3a4f" : "#f1f5f9" },
+  profileLabel: { color: isDark ? "#90a0b5" : "#94a3b8", fontSize: 12, marginBottom: 5 },
+  profileValue: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 15, fontWeight: "600" },
 });
