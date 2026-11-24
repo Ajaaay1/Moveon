@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,
+  Alert, Animated, Image, StyleSheet, Switch, Text, TouchableOpacity, View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
@@ -26,8 +26,9 @@ export default function DriverHomeScreen() {
   const router = useRouter();
   const {
     currentUser, activeBooking, incomingBookings, acceptBooking,
-    updateBookingStatus, updateDriverSettings, logoutUser,
+    updateBookingStatus, updateDriverSettings, logoutUser, isDark, theme,
   } = useContext(AuthContext);
+  const styles = createStyles(isDark);
 
   const [isOnline, setIsOnline] = useState(currentUser?.driverProfile?.is_online === true);
   const [autoAccept, setAutoAccept] = useState(currentUser?.driverProfile?.auto_accept === true);
@@ -54,8 +55,6 @@ export default function DriverHomeScreen() {
     if (!isOnline || !autoAccept || activeBooking || !incomingBookings?.length) return;
     handleAcceptBooking(incomingBookings[0].id);
   }, [isOnline, autoAccept, activeBooking?.id, incomingBookings?.[0]?.id]);
-  const [targetEnabled, setTargetEnabled] = useState(false);
-  const [targetDestination, setTargetDestination] = useState("SM City Cagayan de Oro");
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [region, setRegion] = useState({
     latitude: 8.4542,
@@ -200,7 +199,7 @@ export default function DriverHomeScreen() {
       </MapView>
 
       <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
-        <Ionicons name="menu" size={24} color="#111827" />
+        <Ionicons name="menu" size={24} color={theme.text} />
       </TouchableOpacity>
 
       {/* Drawer Overlay */}
@@ -256,22 +255,7 @@ export default function DriverHomeScreen() {
               </View>
               <Switch value={autoAccept} disabled={savingDriverSettings} onValueChange={(value) => handleDriverSettingChange({ auto_accept: value })} />
             </View>
-            <View style={styles.drawerRow}>
-              <View style={styles.settingText}>
-                <Text style={styles.settingName}>Target Destination</Text>
-                <Text style={styles.drawerSubtitle}>Set your preferred direction</Text>
-              </View>
-              <Switch value={targetEnabled} onValueChange={setTargetEnabled} />
-            </View>
-            {targetEnabled && (
-              <TextInput
-                style={styles.input}
-                value={targetDestination}
-                onChangeText={setTargetDestination}
-                placeholder="Enter destination"
-                placeholderTextColor="#94a3b8"
-              />
-            )}
+
           </View>
 
           <View style={styles.drawerSection}>
@@ -346,10 +330,10 @@ export default function DriverHomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#e2e8f0" },
+const createStyles = (isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: isDark ? "#1e293b" : "#e2e8f0" },
   map: { ...StyleSheet.absoluteFillObject },
-  menuButton: { position: "absolute", top: 55, left: 18, backgroundColor: "#ffffff", padding: 11, borderRadius: 25, elevation: 5, zIndex: 10 },
+  menuButton: { position: "absolute", top: 55, left: 18, backgroundColor: isDark ? "#111c2e" : "#ffffff", padding: 11, borderRadius: 25, elevation: 5, zIndex: 10 },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)", zIndex: 15 },
   drawer: {
     position: "absolute",
@@ -357,39 +341,39 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     width: 300,
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     zIndex: 20,
     elevation: 20,
     borderTopRightRadius: 24,
     borderBottomRightRadius: 24,
     overflow: "hidden",
   },
-  profileHeader: { backgroundColor: "#e0f2fe", paddingTop: 55, paddingHorizontal: 20, paddingBottom: 20 },
+  profileHeader: { backgroundColor: isDark ? "#12354a" : "#e0f2fe", paddingTop: 55, paddingHorizontal: 20, paddingBottom: 20 },
   profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
-  avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: "#ffffff", justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  profileName: { color: "#0f172a", fontSize: 18, fontWeight: "bold" },
-  profileCaption: { color: "#64748b", fontSize: 12, marginTop: 3 },
+  avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: isDark ? "#111c2e" : "#ffffff", justifyContent: "center", alignItems: "center", marginBottom: 12 },
+  profileName: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 18, fontWeight: "bold" },
+  profileCaption: { color: isDark ? "#9caec2" : "#64748b", fontSize: 12, marginTop: 3 },
   drawerContent: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
-  drawerSection: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: "#e2e8f0", gap: 10 },
+  drawerSection: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0", gap: 10 },
   drawerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 7 },
-  drawerTitle: { color: "#0f172a", fontSize: 15, fontWeight: "bold" },
-  drawerSubtitle: { color: "#64748b", fontSize: 11, marginTop: 3 },
+  drawerTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 15, fontWeight: "bold" },
+  drawerSubtitle: { color: isDark ? "#9caec2" : "#64748b", fontSize: 11, marginTop: 3 },
   settingText: { flex: 1 },
-  settingName: { color: "#1e293b", fontSize: 13, fontWeight: "600" },
-  input: { borderWidth: 1, borderColor: "#cbd5e1", borderRadius: 8, color: "#0f172a", padding: 9, marginTop: 5 },
-  walletAmount: { color: "#0284c7", fontSize: 24, fontWeight: "bold", marginTop: 5 },
+  settingName: { color: isDark ? "#e2e8f0" : "#1e293b", fontSize: 13, fontWeight: "600" },
+  input: { borderWidth: 1, borderColor: isDark ? "#3b4d64" : "#cbd5e1", borderRadius: 8, color: isDark ? "#f8fafc" : "#0f172a", padding: 9, marginTop: 5 },
+  walletAmount: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 24, fontWeight: "bold", marginTop: 5 },
   historyRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 },
-  historyFare: { color: "#0284c7", fontWeight: "bold" },
-  logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 17, paddingHorizontal: 22, borderTopWidth: 1, borderTopColor: "#e2e8f0" },
+  historyFare: { color: isDark ? "#38bdf8" : "#0284c7", fontWeight: "bold" },
+  logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 17, paddingHorizontal: 22, borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0" },
   logoutText: { color: "#ef4444", fontWeight: "bold", marginLeft: 12 },
-  bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10, maxHeight: "55%" },
-  requestCard: { borderTopWidth: 1, borderTopColor: "#e2e8f0", paddingTop: 10, marginTop: 8 },
+  bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10, maxHeight: "55%" },
+  requestCard: { borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0", paddingTop: 10, marginTop: 8 },
   bookingHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  panelTitle: { color: "#0f172a", fontSize: 15, fontWeight: "bold" },
-  panelSubtitle: { color: "#64748b", fontSize: 12, marginTop: 4 },
-  bookingLine: { color: "#334155", fontSize: 12, marginTop: 5 },
-  fare: { color: "#0284c7", fontSize: 17, fontWeight: "bold" },
-  statusBox: { backgroundColor: "#e0f2fe", borderRadius: 8, padding: 9, marginTop: 10 },
+  panelTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 15, fontWeight: "bold" },
+  panelSubtitle: { color: isDark ? "#9caec2" : "#64748b", fontSize: 12, marginTop: 4 },
+  bookingLine: { color: isDark ? "#cbd5e1" : "#334155", fontSize: 12, marginTop: 5 },
+  fare: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 17, fontWeight: "bold" },
+  statusBox: { backgroundColor: isDark ? "#12354a" : "#e0f2fe", borderRadius: 8, padding: 9, marginTop: 10 },
   statusText: { color: "#0369a1", fontSize: 12, fontWeight: "bold" },
   bookButton: { backgroundColor: "#0284c7", padding: 13, borderRadius: 25, alignItems: "center", marginTop: 12 },
   bookButtonText: { color: "#ffffff", fontWeight: "bold" },
