@@ -1,11 +1,24 @@
 import React, { useContext } from "react";
-import { Tabs } from "expo-router";
+import { ActivityIndicator, View } from "react-native";
+import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { AuthContext } from "../../screens/AuthContext";
 
 export default function TabLayout() {
-  const { currentUser, theme } = useContext(AuthContext);
+  const { currentUser, authLoading, theme } = useContext(AuthContext);
   const isDriver = currentUser?.role === "driver";
+
+  if (authLoading) {
+    return (
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
+
+  if (!currentUser) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Tabs

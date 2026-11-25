@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
-import Logo from "../components/logo";
 import { AuthContext } from "./AuthContext";
 
 const MAPBOX_ACCESS_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
@@ -26,30 +25,17 @@ export default function DriverHomeScreen() {
   const router = useRouter();
   const {
     currentUser, activeBooking, incomingBookings, acceptBooking,
-    updateBookingStatus, updateDriverSettings, logoutUser, isDark, theme,
+    updateBookingStatus, isDark, theme,
   } = useContext(AuthContext);
   const styles = createStyles(isDark);
 
   const [isOnline, setIsOnline] = useState(currentUser?.driverProfile?.is_online === true);
   const [autoAccept, setAutoAccept] = useState(currentUser?.driverProfile?.auto_accept === true);
-  const [savingDriverSettings, setSavingDriverSettings] = useState(false);
 
   useEffect(() => {
     setIsOnline(currentUser?.driverProfile?.is_online === true);
     setAutoAccept(currentUser?.driverProfile?.auto_accept === true);
   }, [currentUser?.driverProfile?.is_online, currentUser?.driverProfile?.auto_accept]);
-
-  const handleDriverSettingChange = async (changes) => {
-    setSavingDriverSettings(true);
-    const result = await updateDriverSettings(changes);
-    setSavingDriverSettings(false);
-    if (!result.success) {
-      Alert.alert("Settings not saved", result.message || "Please try again.");
-      return;
-    }
-    if (typeof changes.is_online === "boolean") setIsOnline(changes.is_online);
-    if (typeof changes.auto_accept === "boolean") setAutoAccept(changes.auto_accept);
-  };
 
   useEffect(() => {
     if (!isOnline || !autoAccept || activeBooking || !incomingBookings?.length) return;
@@ -64,8 +50,6 @@ export default function DriverHomeScreen() {
   });
 
   const [routeCoordinates, setRouteCoordinates] = useState([]);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const slideAnim = useState(new Animated.Value(-300))[0];
 
   useEffect(() => {
     (async () => {
@@ -121,44 +105,6 @@ export default function DriverHomeScreen() {
     }
   }, [activeBooking, region]);
 
-  const toggleDrawer = () => {
-    if (isDrawerOpen) {
-      Animated.timing(slideAnim, { toValue: -300, duration: 250, useNativeDriver: true }).start(() => setIsDrawerOpen(false));
-    } else {
-      setIsDrawerOpen(true);
-      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }).start();
-    }
-  };
-
-  const navigateFromDrawer = (path) => {
-    Animated.timing(slideAnim, {
-      toValue: -300,
-      duration: 220,
-      useNativeDriver: true,
-    }).start(() => {
-      setIsDrawerOpen(false);
-      router.push(path);
-    });
-  };
-
-  const handleLogout = () => {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Log Out",
-        style: "destructive",
-        onPress: async () => {
-          const result = await logoutUser();
-          if (!result.success) {
-            Alert.alert("Logout Failed", result.message || "Please try again.");
-            return;
-          }
-          router.replace("/driver/login");
-        },
-      },
-    ]);
-  };
-
   const handleBookingStatus = async () => {
     const currentIndex = STATUS_STEPS.indexOf(activeBooking.status);
     if (currentIndex === -1 || currentIndex >= STATUS_STEPS.length - 1) return;
@@ -209,80 +155,6 @@ export default function DriverHomeScreen() {
         )}
       </MapView>
 
-      <TouchableOpacity style={styles.menuButton} onPress={toggleDrawer}>
-        <Ionicons name="menu" size={24} color={theme.text} />
-      </TouchableOpacity>
-
-      {/* Drawer Overlay */}
-      {isDrawerOpen && (
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
-          onPress={toggleDrawer}
-        />
-      )}
-
-      {/* Sliding Drawer */}
-      <Animated.View style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}>
-        <View style={styles.profileHeader}>
-          <View style={styles.avatar}>
-            {currentUser?.avatar_url ? (
-              <Image source={{ uri: currentUser.avatar_url }} style={styles.profileAvatarImage} />
-            ) : (
-              <Logo size={55} />
-            )}
-          </View>
-          <TouchableOpacity onPress={() => navigateFromDrawer("/(tabs)/details")} activeOpacity={0.7}>
-            <Text style={styles.profileName}>{currentUser?.full_name || currentUser?.email || "Driver"}</Text>
-            <Text style={styles.profileCaption}>{currentUser?.email || "Driver Account"} · Profile & Settings</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.drawerContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.drawerSection}>
-            <Text style={styles.drawerTitle}>Account Details</Text>
-            <Text style={styles.drawerSubtitle}>Contact: {currentUser?.phone || "Not provided"}</Text>
-            <Text style={styles.drawerSubtitle}>Vehicle: {currentUser?.driverProfile?.vehicle_type || "Not provided"}</Text>
-            <Text style={styles.drawerSubtitle}>Plate Number: {currentUser?.driverProfile?.plate_number || "Not provided"}</Text>
-            <Text style={styles.drawerSubtitle}>License ID: {currentUser?.driverProfile?.license_id || (currentUser?.driverProfile?.license_image_path ? "License photo uploaded" : "Not provided")}</Text>
-          </View>
-
-          <View style={styles.drawerSection}>
-            <View style={styles.drawerRow}>
-              <View>
-                <Text style={styles.drawerTitle}>Driver Status</Text>
-                <Text style={styles.drawerSubtitle}>{isOnline ? "You are online" : "You are offline"}</Text>
-              </View>
-              <Switch value={isOnline} disabled={savingDriverSettings || !!activeBooking} onValueChange={(value) => handleDriverSettingChange({ is_online: value })} />
-            </View>
-          </View>
-
-          <View style={styles.drawerSection}>
-            <Text style={styles.drawerTitle}>Driver Settings</Text>
-            <View style={styles.drawerRow}>
-              <View style={styles.settingText}>
-                <Text style={styles.settingName}>Auto-Accept Requests</Text>
-                <Text style={styles.drawerSubtitle}>Automatically accept the first available request</Text>
-              </View>
-              <Switch value={autoAccept} disabled={savingDriverSettings} onValueChange={(value) => handleDriverSettingChange({ auto_accept: value })} />
-            </View>
-
-          </View>
-
-          <View style={styles.drawerSection}>
-            <Text style={styles.drawerTitle}>Driver Wallet</Text>
-            <Text style={styles.walletAmount}>₱1,250.00</Text>
-            <Text style={styles.drawerSubtitle}>Demo balance only</Text>
-          </View>
-
-        </ScrollView>
-
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Ionicons name="log-out-outline" size={22} color="#ef4444" />
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
-      </Animated.View>
-
       {/* Driver Bottom Panel for Accepting/Managing Booking */}
       <ScrollView style={styles.bottomPanel} contentContainerStyle={styles.bottomPanelContent} showsVerticalScrollIndicator={false}>
         {activeBooking ? (
@@ -301,6 +173,14 @@ export default function DriverHomeScreen() {
             <View style={styles.statusBox}>
               <Text style={styles.statusText}>Status: {activeBooking.status}</Text>
             </View>
+            <TouchableOpacity
+              style={styles.bookButton}
+              onPress={() => router.push({ pathname: "/chat", params: { bookingId: activeBooking.id } })}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.bookButtonText}>Message Passenger</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.bookButton} onPress={handleBookingStatus}>
               <Text style={styles.bookButtonText}>
                 {activeBooking.status === "Proceed to Pick Up"
@@ -333,7 +213,7 @@ export default function DriverHomeScreen() {
         ) : (
           <>
             <Text style={styles.panelTitle}>You are offline</Text>
-            <Text style={styles.panelSubtitle}>Turn on Driver Status in your drawer to receive bookings.</Text>
+            <Text style={styles.panelSubtitle}>Open Profile > Driver Controls to change your availability.</Text>
           </>
         )}
       </ScrollView>
@@ -344,39 +224,6 @@ export default function DriverHomeScreen() {
 const createStyles = (isDark) => StyleSheet.create({
   container: { flex: 1, backgroundColor: isDark ? "#1e293b" : "#e2e8f0" },
   map: { ...StyleSheet.absoluteFillObject },
-  menuButton: { position: "absolute", top: 55, left: 18, backgroundColor: isDark ? "#111c2e" : "#ffffff", padding: 11, borderRadius: 25, elevation: 5, zIndex: 10 },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.35)", zIndex: 15 },
-  drawer: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 300,
-    backgroundColor: isDark ? "#111c2e" : "#ffffff",
-    zIndex: 20,
-    elevation: 20,
-    borderTopRightRadius: 24,
-    borderBottomRightRadius: 24,
-    overflow: "hidden",
-  },
-  profileHeader: { backgroundColor: isDark ? "#12354a" : "#e0f2fe", paddingTop: 55, paddingHorizontal: 20, paddingBottom: 20 },
-  profileAvatarImage: { width: 55, height: 55, borderRadius: 28 },
-  avatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: isDark ? "#111c2e" : "#ffffff", justifyContent: "center", alignItems: "center", marginBottom: 12 },
-  profileName: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 18, fontWeight: "bold" },
-  profileCaption: { color: isDark ? "#9caec2" : "#64748b", fontSize: 12, marginTop: 3 },
-  drawerContent: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
-  drawerSection: { paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0", gap: 10 },
-  drawerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 7 },
-  drawerTitle: { color: isDark ? "#f8fafc" : "#0f172a", fontSize: 15, fontWeight: "bold" },
-  drawerSubtitle: { color: isDark ? "#9caec2" : "#64748b", fontSize: 11, marginTop: 3 },
-  settingText: { flex: 1 },
-  settingName: { color: isDark ? "#e2e8f0" : "#1e293b", fontSize: 13, fontWeight: "600" },
-  input: { borderWidth: 1, borderColor: isDark ? "#3b4d64" : "#cbd5e1", borderRadius: 8, color: isDark ? "#f8fafc" : "#0f172a", padding: 9, marginTop: 5 },
-  walletAmount: { color: isDark ? "#38bdf8" : "#0284c7", fontSize: 24, fontWeight: "bold", marginTop: 5 },
-  historyRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 },
-  historyFare: { color: isDark ? "#38bdf8" : "#0284c7", fontWeight: "bold" },
-  logoutButton: { flexDirection: "row", alignItems: "center", paddingVertical: 17, paddingHorizontal: 22, borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0" },
-  logoutText: { color: "#ef4444", fontWeight: "bold", marginLeft: 12 },
   bottomPanelContent: { paddingBottom: 8 },
   bottomPanel: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: isDark ? "#111c2e" : "#ffffff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingHorizontal: 18, paddingTop: 15, paddingBottom: 28, elevation: 10, maxHeight: "55%" },
   requestCard: { borderTopWidth: 1, borderTopColor: isDark ? "#2b3a4f" : "#e2e8f0", paddingTop: 10, marginTop: 8 },
