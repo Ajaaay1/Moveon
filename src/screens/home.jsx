@@ -7,7 +7,7 @@ import {
   Alert, 
   BackHandler,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -40,6 +40,8 @@ export default function HomeScreen() {
   // Connect AuthContext
   const { currentUser, activeBooking, createBooking, clearBooking, logoutUser, submitRiderRating, isDark, theme } = useContext(AuthContext);
   const styles = createStyles(isDark);
+
+
   
   // Location States
   const [initialRegion, setInitialRegion] = useState(null);
@@ -337,6 +339,10 @@ export default function HomeScreen() {
       setIsRatingModalOpen(false);
     }
   }, [activeBooking?.id, activeBooking?.status, activeBooking?.passengerRating]);
+
+  if (currentUser && currentUser.role === "driver") {
+    return <Redirect href="/(tabs)/driverHome" />;
+  }
 
   return (
     <View style={styles.container}>

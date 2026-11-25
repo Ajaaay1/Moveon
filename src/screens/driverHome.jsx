@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useContext } from "react";
 import {
-  Alert, Animated, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View,
+  Alert, Animated, Image, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View, BackHandler
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -28,16 +28,21 @@ export default function DriverHomeScreen() {
     currentUser, activeBooking, incomingBookings, acceptBooking,
     updateBookingStatus, updateDriverSettings, logoutUser, isDark, theme,
   } = useContext(AuthContext);
+
   const styles = createStyles(isDark);
 
   const [isOnline, setIsOnline] = useState(currentUser?.driverProfile?.is_online === true);
   const [autoAccept, setAutoAccept] = useState(currentUser?.driverProfile?.auto_accept === true);
   const [savingDriverSettings, setSavingDriverSettings] = useState(false);
 
+  
+  
   useEffect(() => {
     setIsOnline(currentUser?.driverProfile?.is_online === true);
     setAutoAccept(currentUser?.driverProfile?.auto_accept === true);
   }, [currentUser?.driverProfile?.is_online, currentUser?.driverProfile?.auto_accept]);
+
+  
 
   const handleDriverSettingChange = async (changes) => {
     setSavingDriverSettings(true);
@@ -50,6 +55,8 @@ export default function DriverHomeScreen() {
     if (typeof changes.is_online === "boolean") setIsOnline(changes.is_online);
     if (typeof changes.auto_accept === "boolean") setAutoAccept(changes.auto_accept);
   };
+
+  
 
   useEffect(() => {
     if (!isOnline || !autoAccept || activeBooking || !incomingBookings?.length) return;
@@ -83,6 +90,20 @@ export default function DriverHomeScreen() {
       }
     })();
   }, []);
+
+
+  useEffect(() => {
+    const onBackPress = () => {
+      if (isDrawerOpen) {
+        toggleDrawer();
+        return true; // Prevents default behavior, closes drawer instead
+      }
+      return true; // Return true here to block the physical back button from exiting or logging out
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+    return () => subscription.remove();
+  }, [isDrawerOpen]);
 
   // Before pickup, route to the passenger. After pickup, route to the destination.
   useEffect(() => {
@@ -180,6 +201,10 @@ export default function DriverHomeScreen() {
       Alert.alert("Unable to Accept", result?.message || "This booking is no longer available.");
     }
   };
+
+  if (currentUser && currentUser.role !== "driver") {
+    return <Redirect href="/(tabs)/passengerHome" />;
+  }
 
   return (
     <View style={styles.container}>

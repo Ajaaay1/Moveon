@@ -209,7 +209,7 @@ export const AuthProvider = ({ children }) => {
           .from("bookings")
           .select("*")
           .eq("passenger_id", userId)
-          .in("status", ["searching", "accepted", "arrived", "in_progress", "completed"])
+          .in("status", ["searching", "accepted", "arrived", "in_progress"])
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -644,7 +644,7 @@ export const AuthProvider = ({ children }) => {
       .eq("id", activeBooking.id)
       .eq("driver_id", session.user.id)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (error) return { success: false, message: error.message };
 
