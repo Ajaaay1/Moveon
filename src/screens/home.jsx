@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { 
   StyleSheet, 
   Text,
@@ -7,11 +7,11 @@ import {
   Alert, 
   BackHandler,
 } from "react-native";
-import { Redirect, useRouter } from "expo-router";
+import { Redirect, useRouter, useLocalSearchParams } from "expo-router";
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-import PassengerDrawer from "../components/PassengerDrawer";
+import DestinationSearch from "../components/DestinationSearch";
 import BookingBottomSheet from "../components/BookingBottomSheet";
 import RatingModal from "../components/ratingModal";
 import { AuthContext } from "./AuthContext";
@@ -36,12 +36,12 @@ const getEstimatedRoadDistanceKm = (start, end) => {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const mapRef = useRef(null);
   
   // Connect AuthContext
-  const { currentUser, activeBooking, createBooking, clearBooking, logoutUser, submitRiderRating, isDark, theme } = useContext(AuthContext);
+  const { currentUser, activeBooking, createBooking, clearBooking, submitRiderRating, isDark, theme } = useContext(AuthContext);
   const styles = createStyles(isDark);
-
-
   
   // Location States
   const [initialRegion, setInitialRegion] = useState(null);
@@ -61,10 +61,11 @@ export default function HomeScreen() {
   const [routeCoordinates, setRouteCoordinates] = useState([]);
 
   // UI States
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchingDestination, setIsSearchingDestination] = useState(false);
 
 
   useEffect(() => {
@@ -177,8 +178,6 @@ export default function HomeScreen() {
     }
   }, [activeBooking?.id]);
 
-  const toggleDrawer = () => setIsDrawerOpen((open) => !open);
-
   useEffect(() => {
     const handleBackPress = () => {
       if (isFormOpen) {
@@ -187,10 +186,6 @@ export default function HomeScreen() {
       }
       if (isServiceModalOpen) {
         setIsServiceModalOpen(false);
-        return true;
-      }
-      if (isDrawerOpen) {
-        setIsDrawerOpen(false);
         return true;
       }
       if (activeBooking) return true;
@@ -204,16 +199,7 @@ export default function HomeScreen() {
 
     const backSubscription = BackHandler.addEventListener("hardwareBackPress", handleBackPress);
     return () => backSubscription.remove();
-  }, [isFormOpen, isServiceModalOpen, isDrawerOpen, activeBooking?.id]);
-
-  const handleLogout = async () => {
-    const result = await logoutUser();
-    if (!result.success) {
-      Alert.alert("Logout Failed", result.message || "Please try again.");
-      return;
-    }
-    router.replace("/login");
-  };
+  }, [isFormOpen, isServiceModalOpen, activeBooking?.id]);
 
   const handleSelectService = (serviceName) => {
     setSelectedService(serviceName);
@@ -223,11 +209,6 @@ export default function HomeScreen() {
 
   const handleMapPress = async (e) => {
     if (activeBooking) return;
-
-    if (isDrawerOpen) {
-      setIsDrawerOpen(false);
-      return;
-    }
 
     const pinnedCoords = e.nativeEvent.coordinate;
     setDestination(pinnedCoords);
@@ -247,6 +228,58 @@ export default function HomeScreen() {
 
     if (!isFormOpen) setIsServiceModalOpen(true);
   };
+
+  const handleSearchDestination = async () => {
+    const query = searchQuery.trim();
+    if (!query || isSearchingDestination || activeBooking) return;
+
+    setIsSearchingDestination(true);
+    try {
+      const matches = await Location.geocodeAsync(query);
+      if (!matches?.length) {
+        Alert.alert("Place Not Found", "Try a more complete address or nearby landmark.");
+        return;
+      }
+
+      const coords = {
+        latitude: matches[0].latitude,
+        longitude: matches[0].longitude,
+      };
+      setDestination(coords);
+      setDestinationText(query);
+      mapRef.current?.animateToRegion({
+        ...coords,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 500);
+      setIsFormOpen(false);
+      setIsServiceModalOpen(true);
+    } catch (error) {
+      Alert.alert("Search Failed", "Moveon could not find that place. Check the spelling and try again.");
+    } finally {
+      setIsSearchingDestination(false);
+    }
+  };
+
+  useEffect(() => {
+    if (params.savedLat == null || params.savedLng == null) return;
+
+    const latitude = Number(params.savedLat);
+    const longitude = Number(params.savedLng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+    const coords = { latitude, longitude };
+    setDestination(coords);
+    setDestinationText(String(params.savedName || "Saved destination"));
+    setSearchQuery(String(params.savedName || ""));
+    setIsFormOpen(false);
+    setIsServiceModalOpen(true);
+    mapRef.current?.animateToRegion({
+      ...coords,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    }, 500);
+  }, [params.savedLat, params.savedLng, params.savedName, params.selectionId]);
 
   const estimatedFare = distance > 0 ? 50 + (distance * 25) : 0;
 
@@ -347,11 +380,12 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       {/* 2. MAP VIEW */}
-      <MapView 
+      <MapView
+        ref={mapRef}
         style={styles.map}
         showsUserLocation={true}
         showsMyLocationButton={true}
-        initialRegion={initialRegion}
+        initialRegion={initialRegion || { latitude: 8.4542, longitude: 124.6319, latitudeDelta: 0.04, longitudeDelta: 0.04 }}
         onPress={handleMapPress}
       >
         {/* Passenger Pickup Marker */}
@@ -379,25 +413,12 @@ export default function HomeScreen() {
 
       </MapView>
 
-      {/* Keep passenger drawer available during an active booking. */}
-      {!isRatingModalOpen && (
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={toggleDrawer}
-          activeOpacity={0.8}
-          accessibilityLabel="Open passenger menu"
-        >
-          <Ionicons name="menu" size={24} color={theme.text} />
-        </TouchableOpacity>
-      )}
-
-      <PassengerDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
-        currentUser={currentUser}
-        activeBooking={activeBooking}
-        onNavigate={(path) => router.push(path)}
-        onLogout={handleLogout}
+      <DestinationSearch
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+        onSearch={handleSearchDestination}
+        loading={isSearchingDestination}
+        disabled={!!activeBooking}
         theme={theme}
       />
 
@@ -449,6 +470,17 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.bookingFare}>{activeBooking.fare}</Text>
           </View>
+          {activeBooking.driver_id && activeBooking.status !== "Drop Off / Complete" && (
+            <TouchableOpacity
+              style={styles.chatButton}
+              onPress={() => router.push({ pathname: "/chat", params: { bookingId: activeBooking.id } })}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="chatbubble-ellipses-outline" size={18} color="#ffffff" />
+              <Text style={styles.chatButtonText}>Message Driver</Text>
+            </TouchableOpacity>
+          )}
+
           <View style={styles.bookingDestination}>
             <Text style={styles.smallLabel}>Destination</Text>
             <Text style={styles.bookingValue}>{activeBooking.destination}</Text>
@@ -569,6 +601,7 @@ const createStyles = (isDark) => StyleSheet.create({
   callButton: { backgroundColor: '#10b981', padding: 12, borderRadius: 25 },
   cancelRideButton: { backgroundColor: isDark ? "#1e293b" : "#f1f5f9", paddingVertical: 14, borderRadius: 25, alignItems: 'center' },
   cancelRideText: { color: '#ef4444', fontSize: 15, fontWeight: 'bold' },
-  menuButton: { position: 'absolute', top: 60, left: 20, backgroundColor: isDark ? "#111c2e" : "#ffffff", padding: 10, borderRadius: 25, elevation: 5, zIndex: 10 },
+  chatButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, backgroundColor: "#0284c7", paddingVertical: 12, borderRadius: 12, marginBottom: 12 },
+  chatButtonText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
   textInput: { flex: 1, fontSize: 15, color: isDark ? "#f8fafc" : "#0f172a" },
 });
