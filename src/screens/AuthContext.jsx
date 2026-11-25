@@ -644,7 +644,7 @@ export const AuthProvider = ({ children }) => {
       .eq("id", activeBooking.id)
       .eq("driver_id", session.user.id)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (error) return { success: false, message: error.message };
 

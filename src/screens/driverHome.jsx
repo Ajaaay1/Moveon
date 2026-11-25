@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import {
   Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
@@ -126,6 +126,10 @@ export default function DriverHomeScreen() {
       Alert.alert("Unable to Accept", result?.message || "This booking is no longer available.");
     }
   };
+
+  if (currentUser && currentUser.role !== "driver") {
+    return <Redirect href="/(tabs)/passengerHome" />;
+  }
 
   return (
     <View style={styles.container}>
