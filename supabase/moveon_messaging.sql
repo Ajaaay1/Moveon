@@ -13,6 +13,7 @@ create index if not exists booking_messages_booking_created_idx
   on public.booking_messages (booking_id, created_at asc);
 
 alter table public.booking_messages enable row level security;
+grant usage on schema public to authenticated;
 grant select, insert on public.booking_messages to authenticated;
 
 drop policy if exists "Booking participants read messages" on public.booking_messages;
