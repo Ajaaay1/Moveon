@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AuthContext } from "./AuthContext";
 
 const SUPPORT_EMAIL = "ajsarsonas@gmail.com";
 const PHONE_1 = "09605198902";
@@ -48,6 +49,8 @@ const faqs = [
 
 export default function SupportPassenger() {
   const router = useRouter();
+  const { isDark, theme } = useContext(AuthContext);
+  const styles = createStyles(isDark);
   const [expandedFAQ, setExpandedFAQ] = useState(null);
 
   const openLink = async (url) => {
@@ -86,7 +89,7 @@ export default function SupportPassenger() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* HEADER */}
       <View style={styles.header}>
@@ -97,7 +100,7 @@ export default function SupportPassenger() {
           <Ionicons
             name="arrow-back"
             size={24}
-            color="#0f172a"
+            color={theme.text}
           />
         </TouchableOpacity>
 
@@ -324,10 +327,10 @@ export default function SupportPassenger() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (isDark) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8fafc",
+    backgroundColor: isDark ? "#0b1220" : "#f8fafc",
   },
 
   header: {
@@ -337,9 +340,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 15,
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0",
   },
 
   backButton: {
@@ -352,7 +355,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 19,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
   },
 
   scrollContent: {
@@ -361,7 +364,7 @@ const styles = StyleSheet.create({
   },
 
   welcomeCard: {
-    backgroundColor: "#e0f2fe",
+    backgroundColor: isDark ? "#12354a" : "#e0f2fe",
     borderRadius: 20,
     padding: 25,
     alignItems: "center",
@@ -371,7 +374,7 @@ const styles = StyleSheet.create({
   welcomeIcon: {
     width: 70,
     height: 70,
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     borderRadius: 35,
     justifyContent: "center",
     alignItems: "center",
@@ -381,14 +384,14 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
     marginBottom: 8,
     textAlign: "center",
   },
 
   welcomeText: {
     fontSize: 14,
-    color: "#475569",
+    color: isDark ? "#b6c2d2" : "#475569",
     textAlign: "center",
     lineHeight: 22,
   },
@@ -396,33 +399,33 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 19,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
     marginBottom: 7,
     marginTop: 5,
   },
 
   sectionDescription: {
     fontSize: 13,
-    color: "#64748b",
+    color: isDark ? "#9caec2" : "#64748b",
     marginBottom: 16,
   },
 
   contactCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     flexDirection: "row",
     alignItems: "center",
     padding: 16,
     borderRadius: 15,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: isDark ? "#2b3a4f" : "#e2e8f0",
   },
 
   iconContainer: {
     width: 48,
     height: 48,
     borderRadius: 13,
-    backgroundColor: "#e0f2fe",
+    backgroundColor: isDark ? "#12354a" : "#e0f2fe",
     justifyContent: "center",
     alignItems: "center",
     marginRight: 13,
@@ -435,27 +438,27 @@ const styles = StyleSheet.create({
   contactTitle: {
     fontSize: 15,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
     marginBottom: 4,
   },
 
   contactValue: {
     fontSize: 13,
-    color: "#64748b",
+    color: isDark ? "#9caec2" : "#64748b",
   },
 
   faqContainer: {
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: isDark ? "#2b3a4f" : "#e2e8f0",
     overflow: "hidden",
     marginBottom: 24,
   },
 
   faqItem: {
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f5f9",
+    borderBottomColor: isDark ? "#2b3a4f" : "#f1f5f9",
   },
 
   faqQuestion: {
@@ -469,7 +472,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: "500",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
     paddingRight: 12,
   },
 
@@ -480,15 +483,15 @@ const styles = StyleSheet.create({
 
   answerText: {
     fontSize: 13,
-    color: "#64748b",
+    color: isDark ? "#9caec2" : "#64748b",
     lineHeight: 21,
   },
 
   helpCard: {
-    backgroundColor: "#ffffff",
+    backgroundColor: isDark ? "#111c2e" : "#ffffff",
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
+    borderColor: isDark ? "#2b3a4f" : "#e2e8f0",
     padding: 23,
     alignItems: "center",
   },
@@ -496,14 +499,14 @@ const styles = StyleSheet.create({
   helpTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
     marginTop: 12,
     marginBottom: 8,
   },
 
   helpDescription: {
     fontSize: 13,
-    color: "#64748b",
+    color: isDark ? "#9caec2" : "#64748b",
     textAlign: "center",
     lineHeight: 21,
     marginBottom: 18,
@@ -530,6 +533,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 25,
     fontSize: 12,
-    color: "#94a3b8",
+    color: isDark ? "#90a0b5" : "#94a3b8",
   },
 });

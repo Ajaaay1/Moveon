@@ -1,7 +1,35 @@
 import React, { createContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 
 export const AuthContext = createContext();
+
+const APP_THEMES = {
+  light: {
+    background: "#f8fafc",
+    surface: "#ffffff",
+    surfaceMuted: "#f1f5f9",
+    text: "#0f172a",
+    textSecondary: "#334155",
+    muted: "#64748b",
+    border: "#e2e8f0",
+    input: "#ffffff",
+    accent: "#0284c7",
+    accentSoft: "#e0f2fe",
+  },
+  dark: {
+    background: "#0b1220",
+    surface: "#111c2e",
+    surfaceMuted: "#1e293b",
+    text: "#f8fafc",
+    textSecondary: "#cbd5e1",
+    muted: "#9caec2",
+    border: "#2b3a4f",
+    input: "#172338",
+    accent: "#38bdf8",
+    accentSoft: "#12354a",
+  },
+};
 
 const mapBooking = (row) => ({
   ...row,
@@ -53,6 +81,36 @@ export const AuthProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
   const [activeBooking, setActiveBooking] = useState(null);
   const [incomingBookings, setIncomingBookings] = useState([]);
+  const [themeMode, setThemeModeState] = useState("light");
+  const isDark = themeMode === "dark";
+  const theme = isDark ? APP_THEMES.dark : APP_THEMES.light;
+
+  useEffect(() => {
+    let mounted = true;
+    AsyncStorage.getItem("moveon_theme_mode")
+      .then((savedMode) => {
+        if (mounted && (savedMode === "light" || savedMode === "dark")) {
+          setThemeModeState(savedMode);
+        }
+      })
+      .catch((error) => console.warn("Theme preference could not be loaded:", error.message));
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const setThemeMode = async (mode) => {
+    if (mode !== "light" && mode !== "dark") return;
+    setThemeModeState(mode);
+    try {
+      await AsyncStorage.setItem("moveon_theme_mode", mode);
+    } catch (error) {
+      console.warn("Theme preference could not be saved:", error.message);
+    }
+  };
+
+  const toggleDarkMode = (enabled) => setThemeMode(enabled ? "dark" : "light");
 
   const loadProfile = async (user) => {
     if (!user) {
@@ -140,8 +198,12 @@ export const AuthProvider = ({ children }) => {
     }
 
     let alive = true;
+    let refreshInProgress = false;
 
     const refreshBookings = async () => {
+      if (refreshInProgress || !alive) return;
+      refreshInProgress = true;
+      try {
       if (currentUser.role === "passenger") {
         const { data, error } = await supabase
           .from("bookings")
@@ -181,6 +243,10 @@ export const AuthProvider = ({ children }) => {
 
           if (ratingError) console.warn("Ride rating lookup error:", ratingError.message);
           existingRating = ratingRow?.rating ?? null;
+          if (existingRating !== null) {
+            if (alive) setActiveBooking(null);
+            return;
+          }
         }
 
         if (alive) {
@@ -191,12 +257,18 @@ export const AuthProvider = ({ children }) => {
           });
         }
       } else if (currentUser.role === "driver") {
-        const { data: waiting, error: waitingError } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("status", "searching")
-          .order("created_at", { ascending: false })
-          .limit(10);
+        const driverIsOnline = currentUser?.driverProfile?.is_online === true;
+        if (!driverIsOnline) {
+          setIncomingBookings([]);
+        }
+        const { data: waiting, error: waitingError } = driverIsOnline
+          ? await supabase
+              .from("bookings")
+              .select("*")
+              .eq("status", "searching")
+              .order("created_at", { ascending: false })
+              .limit(10)
+          : { data: [], error: null };
 
         if (waitingError) {
           console.warn("Incoming bookings load error:", waitingError.message);
@@ -214,13 +286,21 @@ export const AuthProvider = ({ children }) => {
 
         if (assignedError) console.warn("Assigned booking load error:", assignedError.message);
         if (alive) {
-          setIncomingBookings((waiting || []).map(mapBooking));
+          setIncomingBookings(driverIsOnline ? (waiting || []).map(mapBooking) : []);
           setActiveBooking(assigned ? mapBooking(assigned) : null);
         }
+      }
+      } finally {
+        refreshInProgress = false;
       }
     };
 
     refreshBookings();
+
+    // Keep bookings current even if a device or network cannot maintain WebSocket Realtime.
+    const bookingRefreshInterval = setInterval(() => {
+      if (alive) refreshBookings();
+    }, 10000);
 
     const channel = supabase
       .channel("moveon-bookings-" + userId)
@@ -230,16 +310,19 @@ export const AuthProvider = ({ children }) => {
         table: "bookings",
       }, refreshBookings)
       .subscribe((status, error) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.warn("Booking realtime error:", error?.message || status);
+        if (status === "SUBSCRIBED") {
+          console.info("Booking realtime connected.");
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          console.warn("Booking realtime unavailable; 10-second refresh fallback is active:", error?.message || status);
         }
       });
 
     return () => {
       alive = false;
+      clearInterval(bookingRefreshInterval);
       supabase.removeChannel(channel);
     };
-  }, [session?.user?.id, currentUser?.role]);
+  }, [session?.user?.id, currentUser?.role, currentUser?.driverProfile?.is_online]);
 
   const registerUser = async (newUser) => {
     const fullName = newUser.fullName ||
@@ -268,12 +351,42 @@ export const AuthProvider = ({ children }) => {
     }
 
     if (newUser.role === "driver") {
+      let licenseImagePath = null;
+
+      if (newUser.licenseImageUri) {
+        try {
+          const fileResponse = await fetch(newUser.licenseImageUri);
+          const imageBlob = await fileResponse.blob();
+          const extension = (newUser.licenseImageUri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
+          const mimeType = extension === "png"
+            ? "image/png"
+            : extension === "webp"
+              ? "image/webp"
+              : "image/jpeg";
+          licenseImagePath = data.user.id + "/" + Date.now() + "." + (extension === "jpeg" ? "jpg" : extension);
+
+          const { error: uploadError } = await supabase.storage
+            .from("driver-licenses")
+            .upload(licenseImagePath, imageBlob, {
+              contentType: mimeType,
+              cacheControl: "3600",
+              upsert: false,
+            });
+
+          if (uploadError) {
+            return { success: false, message: "Account created, but the license photo could not be uploaded: " + uploadError.message };
+          }
+        } catch (uploadError) {
+          return { success: false, message: "Account created, but the license photo could not be uploaded: " + uploadError.message };
+        }
+      }
+
       const { error: driverError } = await supabase
         .from("driver_profiles")
         .insert({
           user_id: data.user.id,
-          license_id: newUser.licenseId || null,
-          license_image_path: null,
+          license_id: newUser.licenseId?.trim() || null,
+          license_image_path: licenseImagePath,
           plate_number: newUser.plateNumber.trim().toUpperCase(),
           vehicle_type: newUser.vehicleType.trim(),
           verification_status: "pending",
@@ -347,8 +460,12 @@ export const AuthProvider = ({ children }) => {
         plate_number: changes.plate_number?.trim().toUpperCase() || "",
       };
 
-      if (!driverChanges.license_id || !driverChanges.vehicle_type || !driverChanges.plate_number) {
-        return { success: false, message: "License ID, vehicle type, and plate number are required for driver accounts." };
+      if (
+        (!driverChanges.license_id && !currentUser?.driverProfile?.license_image_path) ||
+        !driverChanges.vehicle_type ||
+        !driverChanges.plate_number
+      ) {
+        return { success: false, message: "Provide a license ID or license photo, vehicle type, and plate number." };
       }
 
       const { error: driverError } = await supabase
@@ -407,6 +524,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logoutUser = async () => {
+    if (session?.user?.id && currentUser?.role === "driver") {
+      await supabase
+        .from("driver_profiles")
+        .update({ is_online: false })
+        .eq("user_id", session.user.id);
+    }
     const { error } = await supabase.auth.signOut();
     if (error) return { success: false, message: error.message };
     setCurrentUser(null);
@@ -418,6 +541,34 @@ export const AuthProvider = ({ children }) => {
     return error
       ? { success: false, message: error.message }
       : { success: true, message: "Password reset email sent." };
+  };
+
+  const updateDriverSettings = async (changes) => {
+    if (!session?.user?.id || currentUser?.role !== "driver") {
+      return { success: false, message: "Only logged-in drivers can change availability." };
+    }
+
+    const update = {};
+    if (typeof changes.is_online === "boolean") update.is_online = changes.is_online;
+    if (typeof changes.auto_accept === "boolean") update.auto_accept = changes.auto_accept;
+    if (!Object.keys(update).length) return { success: false, message: "No settings to update." };
+
+    const { error } = await supabase
+      .from("driver_profiles")
+      .update(update)
+      .eq("user_id", session.user.id);
+
+    if (error) return { success: false, message: error.message };
+
+    const { data, error: loadError } = await supabase
+      .from("driver_profiles")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .single();
+
+    if (loadError) return { success: false, message: loadError.message };
+    setCurrentUser((old) => old ? { ...old, driverProfile: data } : old);
+    return { success: true, driverProfile: data };
   };
 
   const createBooking = async (booking) => {
@@ -447,6 +598,9 @@ export const AuthProvider = ({ children }) => {
 
   const acceptBooking = async (bookingId) => {
     if (!session?.user?.id) return { success: false, message: "Please log in again." };
+    if (currentUser?.role !== "driver" || currentUser?.driverProfile?.is_online !== true) {
+      return { success: false, message: "Go online before accepting a ride." };
+    }
 
     const { data, error } = await supabase
       .from("bookings")
@@ -565,6 +719,11 @@ export const AuthProvider = ({ children }) => {
       session,
       currentUser,
       authLoading,
+      themeMode,
+      isDark,
+      theme,
+      setThemeMode,
+      toggleDarkMode,
       registerUser,
       loginUser,
       updateProfile,
@@ -573,6 +732,7 @@ export const AuthProvider = ({ children }) => {
       activeBooking,
       incomingBookings,
       createBooking,
+      updateDriverSettings,
       acceptBooking,
       updateBookingStatus,
       clearBooking,

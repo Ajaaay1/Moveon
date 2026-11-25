@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,6 +10,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { Eye, EyeOff } from "lucide-react-native";
 import Logo from "../components/logo";
@@ -29,8 +32,37 @@ export default function DriverRegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [licenseId, setLicenseId] = useState("");
+  const [licenseImageUri, setLicenseImageUri] = useState(null);
   const [plateNumber, setPlateNumber] = useState("");
   const [vehicleType, setVehicleType] = useState("");
+
+  const chooseLicensePhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert("Permission Needed", "Allow photo library access to attach your driver's license.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.75,
+      });
+
+      if (!result.canceled && result.assets?.length) {
+        const asset = result.assets[0];
+        if (asset.fileSize && asset.fileSize > 5 * 1024 * 1024) {
+          Alert.alert("Image Too Large", "Choose a license photo smaller than 5 MB.");
+          return;
+        }
+        setLicenseImageUri(asset.uri);
+      }
+    } catch (error) {
+      Alert.alert("Unable to Select Photo", error.message || "Please try again.");
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim() || !lastName.trim()) {
@@ -48,8 +80,8 @@ export default function DriverRegisterScreen() {
       return;
     }
 
-    if (!licenseId.trim()) {
-      Alert.alert("Missing Field", "Please enter your License ID.");
+    if (!licenseId.trim() && !licenseImageUri) {
+      Alert.alert("License Required", "Enter your License ID or attach a clear photo of your driver's license.");
       return;
     }
 
@@ -82,6 +114,7 @@ export default function DriverRegisterScreen() {
       password,
       role: "driver",
       licenseId: licenseId.trim(),
+      licenseImageUri,
       plateNumber: plateNumber.trim().toUpperCase(),
       vehicleType: vehicleType.trim(),
     });
@@ -163,15 +196,44 @@ export default function DriverRegisterScreen() {
               value={email}
             />
 
-            <Text style={styles.label}>Driver's License ID</Text>
+            <Text style={styles.label}>Driver's License ID (optional with photo)</Text>
             <TextInput
               style={styles.input}
               placeholder="Enter License ID"
-              placeholderTextColor="#ccc"
+              placeholderTextColor="#94a3b8"
               autoCapitalize="characters"
               onChangeText={setLicenseId}
               value={licenseId}
             />
+
+            <Text style={styles.licenseOrText}>OR</Text>
+            <TouchableOpacity
+              style={styles.licenseUploadButton}
+              onPress={chooseLicensePhoto}
+              activeOpacity={0.8}
+            >
+              <Ionicons
+                name={licenseImageUri ? "checkmark-circle-outline" : "camera-outline"}
+                size={20}
+                color="#7dd3fc"
+              />
+              <Text style={styles.licenseUploadText}>
+                {licenseImageUri ? "Change License Photo" : "Attach License Photo"}
+              </Text>
+            </TouchableOpacity>
+
+            {licenseImageUri && (
+              <View style={styles.licensePreviewRow}>
+                <Image source={{ uri: licenseImageUri }} style={styles.licensePreview} />
+                <View style={styles.licensePreviewCopy}>
+                  <Text style={styles.licensePreviewTitle}>License photo selected</Text>
+                  <Text style={styles.licensePreviewHint}>Ready to upload securely</Text>
+                  <TouchableOpacity onPress={() => setLicenseImageUri(null)} activeOpacity={0.7}>
+                    <Text style={styles.removeLicenseText}>Remove photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             <Text style={styles.label}>Vehicle Type / Model</Text>
             <TextInput
@@ -283,8 +345,8 @@ const styles = StyleSheet.create({
   form: {
     backgroundColor: "rgba(30, 41, 59, 0.92)",
     padding: 22,
-    borderRadius: 12,
-    gap: 10,
+    borderRadius: 18,
+    gap: 12,
     width: 320,
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.2)",
@@ -308,9 +370,9 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "white",
-    padding: 10,
-    borderRadius: 6,
+    borderColor: "#64748b",
+    padding: 12,
+    borderRadius: 10,
     color: "white",
     backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
@@ -318,8 +380,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "white",
-    borderRadius: 6,
+    borderColor: "#64748b",
+    borderRadius: 10,
     backgroundColor: "rgba(0, 0, 0, 0.25)",
   },
   passwordInput: {
@@ -332,6 +394,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+  licenseOrText: { color: "#94a3b8", fontSize: 11, textAlign: "center", fontWeight: "700", marginVertical: 2 },
+  licenseUploadButton: { minHeight: 48, borderWidth: 1, borderColor: "#64748b", borderStyle: "dashed", borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 12, backgroundColor: "rgba(15, 23, 42, 0.3)" },
+  licenseUploadText: { color: "#7dd3fc", fontSize: 14, fontWeight: "700" },
+  licensePreviewRow: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "rgba(15, 23, 42, 0.35)", borderRadius: 10, padding: 10 },
+  licensePreview: { width: 76, height: 58, borderRadius: 7, backgroundColor: "#1e293b" },
+  licensePreviewCopy: { flex: 1, gap: 3 },
+  licensePreviewTitle: { color: "#f8fafc", fontSize: 12, fontWeight: "700" },
+  licensePreviewHint: { color: "#94a3b8", fontSize: 11 },
+  removeLicenseText: { color: "#fca5a5", fontSize: 11, fontWeight: "700", marginTop: 2 },
   fontColor: {
     color: "white",
     textAlign: "center",
@@ -340,9 +411,11 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     backgroundColor: "#0284c7",
-    padding: 12,
-    borderRadius: 6,
+    padding: 14,
+    borderRadius: 12,
     marginTop: 8,
+    minHeight: 48,
+    justifyContent: "center",
   },
   switchBtn: {
     marginTop: 8,

@@ -1,16 +1,54 @@
-<<<<<<< HEAD
-# Sample Snack app
+# Moveon
 
-Open the `App.js` file to start writing some code. You can preview the changes directly on your phone or tablet by scanning the **QR code** or use the iOS or Android emulators. When you're done, click **Save** and share the link!
+Moveon is a React Native ride-booking app built with Expo, Expo Router, and Supabase.
 
-When you're ready to see everything that Expo provides (or if you want to use your own editor) you can **Download** your project and use it with [expo cli](https://docs.expo.dev/get-started/installation/#expo-cli)).
+## Requirements
 
-All projects created in Snack are publicly available, so you can easily share the link to this project via link, or embed it on a web page with the `<>` button.
+- Node.js and npm
+- Expo Go or an Android emulator
+- A Supabase project
+- A Mapbox public access token (used for road-route estimates)
 
-If you're having problems, you can tweet to us [@expo](https://twitter.com/expo) or ask in our [forums](https://forums.expo.dev/c/expo-dev-tools/61) or [Discord](https://chat.expo.dev/).
+## Setup
 
-Snack is Open Source. You can find the code on the [GitHub repo](https://github.com/expo/snack).
-=======
-# canabis
-mob prog
->>>>>>> f10435be153c4db74e82dd5c7b8315099c0147bf
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env` in the project root.
+3. Replace the placeholder values with your Supabase project URL, Supabase publishable key, and Mapbox public token.
+4. Start Expo with a clean cache:
+
+   ```bash
+   npx expo start -c
+   ```
+
+## Environment variables
+
+Use these exact variable names (including underscores):
+
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `EXPO_PUBLIC_MAPBOX_TOKEN`
+
+Never put a Supabase secret/service-role key in this app. The `.env` file is ignored by Git and must not be committed.
+
+## Supabase setup
+
+Run these SQL files in the Supabase SQL Editor, in this order:
+
+1. `supabase/moveon_setup.sql`
+2. `supabase/moveon_booking_workflow.sql`
+3. `supabase/moveon_profile_avatars.sql`
+4. `supabase/moveon_profile_edit.sql`
+5. `supabase/moveon_driver_profile_update_policy.sql`
+
+The driver profile migrations add the `is_online` and `auto_accept` fields used by the driver settings screen and grant the authenticated driver permission to update those fields on their own profile. Re-running the column additions is safe.
+
+Keep the database schema and the app branch in sync. For the APK demo, confirm the Supabase project has all five migrations applied and that the project-root `.env` contains valid Supabase and Mapbox values.
+
+## Booking updates
+
+The app subscribes to Supabase Realtime for booking changes and also refreshes booking data every 10 seconds as a fallback if a WebSocket connection is interrupted.

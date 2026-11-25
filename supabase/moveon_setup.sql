@@ -21,6 +21,8 @@ create table if not exists public.driver_profiles (
   license_id text,
   license_image_path text,
   plate_number text not null,
+  is_online boolean not null default false,
+  auto_accept boolean not null default false,
   verification_status text not null default 'pending'
     check (verification_status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now(),
@@ -29,6 +31,10 @@ create table if not exists public.driver_profiles (
   constraint driver_plate_required
     check (nullif(trim(plate_number), '') is not null)
 );
+
+alter table public.driver_profiles
+  add column if not exists is_online boolean not null default false,
+  add column if not exists auto_accept boolean not null default false;
 
 alter table public.profiles enable row level security;
 alter table public.driver_profiles enable row level security;

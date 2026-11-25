@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,12 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { AuthContext } from "./AuthContext";
 
 export default function SavedPlacesScreen() {
   const router = useRouter();
+  const { isDark, theme } = useContext(AuthContext);
+  const styles = createStyles(isDark);
   const [place, setPlace] = useState("");
   const [places, setPlaces] = useState([]);
 
@@ -39,7 +42,7 @@ export default function SavedPlacesScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={26} color="#0f172a" />
+          <Ionicons name="arrow-back" size={26} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Saved Places</Text>
       </View>
@@ -92,8 +95,8 @@ export default function SavedPlacesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const createStyles = (isDark) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: isDark ? "#111c2e" : "#fff" },
   header: {
     paddingTop: 55,
     paddingHorizontal: 20,
@@ -102,12 +105,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#e2e8f0",
+    borderBottomColor: isDark ? "#2b3a4f" : "#e2e8f0",
   },
   title: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#0f172a",
+    color: isDark ? "#f8fafc" : "#0f172a",
   },
   content: { flex: 1, padding: 20 },
   label: {
@@ -117,7 +120,7 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: "#cbd5e1",
+    borderColor: isDark ? "#3b4d64" : "#cbd5e1",
     borderRadius: 12,
     padding: 15,
     marginBottom: 15,
@@ -141,14 +144,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
     padding: 16,
-    backgroundColor: "#f8fafc",
+    backgroundColor: isDark ? "#0b1220" : "#f8fafc",
     borderRadius: 12,
     marginTop: 12,
   },
-  placeText: { flex: 1, color: "#0f172a" },
+  placeText: { flex: 1, color: isDark ? "#f8fafc" : "#0f172a" },
   empty: {
     textAlign: "center",
-    color: "#94a3b8",
+    color: isDark ? "#90a0b5" : "#94a3b8",
     marginTop: 40,
   },
 });

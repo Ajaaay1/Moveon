@@ -1,17 +1,28 @@
+import React, { useContext } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { AuthProvider } from "../screens/AuthContext";
+import { AuthProvider, AuthContext } from "../screens/AuthContext";
 
-export default function RootLayout() {
+function AppNavigator() {
+  const { isDark } = useContext(AuthContext);
+
   return (
-    <AuthProvider>
-      <StatusBar style="light" />
+    <>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={{
           headerShown: false,
           animation: "none",
         }}
       />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <AppNavigator />
     </AuthProvider>
   );
 }

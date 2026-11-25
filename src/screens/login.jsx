@@ -46,10 +46,10 @@ export default function LoginScreen() {
           <Logo />
           <Text style={styles.headerTitle}>Login to MoveOn</Text>
 
-          <Text style={styles.label}>Email / Username</Text>
+          <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
-            placeholder="Email@example.com"
+            placeholder="email@example.com"
             placeholderTextColor="#ccc"
             onChangeText={setEmail}
             value={email}
@@ -103,15 +103,15 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  form: { backgroundColor: "rgba(128, 128, 128, 0.9)", padding: 20, borderRadius: 10, gap: 10, width: 300 },
-  headerTitle: { fontSize: 25, fontWeight: "bold", color: "white", textAlign: "center" },
-  label: { color: "white", fontWeight: "bold" },
-  input: { borderWidth: 1, borderColor: "white", padding: 10, borderRadius: 5, color: "white" },
+  form: { backgroundColor: "rgba(30, 41, 59, 0.94)", padding: 24, borderRadius: 18, gap: 12, width: 320, maxWidth: "100%", borderWidth: 1, borderColor: "rgba(255, 255, 255, 0.16)" },
+  headerTitle: { fontSize: 24, fontWeight: "bold", color: "#ffffff", textAlign: "center", marginBottom: 4 },
+  label: { color: "#f8fafc", fontWeight: "700", fontSize: 13 },
+  input: { borderWidth: 1, borderColor: "#64748b", backgroundColor: "rgba(15, 23, 42, 0.45)", paddingHorizontal: 13, paddingVertical: 12, borderRadius: 10, color: "#ffffff", fontSize: 15 },
   forgotPasswordBtn: { alignSelf: "flex-end" },
-  forgotPasswordText: { color: "#38bdf8", fontSize: 13, textDecorationLine: "underline" },
-  submitBtn: { backgroundColor: "blue", padding: 10, borderRadius: 5, marginTop: 10 },
+  forgotPasswordText: { color: "#7dd3fc", fontSize: 13, fontWeight: "600" },
+  submitBtn: { backgroundColor: "#0284c7", paddingVertical: 14, borderRadius: 12, marginTop: 10, minHeight: 48, justifyContent: "center" },
   fontColor: { color: "white", textAlign: "center", fontWeight: "bold" },
   switchBtn: { marginTop: 8, alignItems: "center" },
-  switchText: { color: "white", fontSize: 13 },
-  linkText: { color: "#38bdf8", fontWeight: "bold", textDecorationLine: "underline" },
+  switchText: { color: "#cbd5e1", fontSize: 13, textAlign: "center" },
+  linkText: { color: "#7dd3fc", fontWeight: "bold" },
 });
